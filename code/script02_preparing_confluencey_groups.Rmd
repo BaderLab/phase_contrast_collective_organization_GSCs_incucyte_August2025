@@ -1,0 +1,370 @@
+---
+title: "script02_analysis"
+author: "Shamini Ayyadhury"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+### PACKAGES TO LOAD
+###------------------------------------------------------------------#### 
+```{r}
+library(ggplot2)  
+library(colorspace)
+library(tidyr)
+library(dplyr)
+library(ggthemes)
+library(ggpubr)
+library(ggrepel)
+library(effectsize)
+library(ggthemes)
+library(scales)
+library(forcats)
+library(patchwork)
+
+
+```
+
+FILE/FOLDER PATHS
+```{r}
+###------------------------------------------------------------------#### 
+home <- path.expand('~')
+path_to_repo <- paste0(home,'/Documents/professional/research/PostdoctoralResearch_2020/Projects/PatternRecognitionInGSCs_UsingCV/')
+script_path <- paste0(path_to_repo,'/scripts_final/')
+out <- paste0(path_to_repo,'out/')
+save_dir_path <- paste0(out, 'script02_output_files/')
+dir.create(save_dir_path)
+figures_filepath <- paste0(out, 'figures_final/')
+dir.create(figures_filepath)
+
+```
+
+COLOR MAP
+```{r}
+# --- Color Palette ---
+custom_colors <- c(
+  "Entropy" = "#e41a1c",
+  "SumEntropy" = "#ff7f00",
+  "DifferenceEntropy" = "#fdbf6f",
+  "Angular2ndMoment" = "#b2df8a",
+  "InverseDifferenceMoment" = "#33a02c",
+  "SumAverage" = "#1f78b4",
+  "Variance" = "#a6cee3",
+  "SumVariance" = "#6a3d9a",
+  "DifferenceVariance" = "#cab2d6",
+  "Correlation" = "#b15928",
+  "Contrast" = "#e78ac3",
+  "InfoMeas1" = "#8dd3c7",
+  "InfoMeas2" = "#fb8072",
+  "Granularity 1" = "#8c510a",
+  "Granularity 2" = "#d8b365",
+  "Granularity 3" = "#f6e8c3",
+  "Granularity 4" = "#c7eae5",
+  "Granularity 5" = "#5ab4ac",
+  "Granularity 6" = "#01665e",
+  "Granularity 7" = "#762a83",
+  "Granularity 8" = "#af8dc3",
+  "Granularity 9" = "#e7d4e8",
+  "Granularity 10" = "#66c2a5",
+  "Granularity 11" = "#fc8d62",
+  "Granularity 12" = "#8da0cb",
+  "Granularity 13" = "#e78ac3",
+  "Granularity 14" = "#a6d854",
+  "Granularity 15" = "#ffd92f",
+  "Granularity 16" = "#e5c494"
+)
+```
+
+
+
+
+LOAD DATA
+```{r}
+phase <- read.csv(paste0(out, 'script01_output_files/final_dataset_afterQC.csv'), row.names = 1)
+source(paste0(script_path,"code/source_scripts/sourceData_General_variables_and_functions.R")) ### load general variables and functions
+```
+
+
+1. SINCE THERE SEEMS TO BE A DEPENDENCE ON THE AREA ON THE FEATURE SIGNALS, DECIDED TO GROUP IMAGES WITH SIMILAR AVAREAGE AREAS. THIS WAS DETERMINED AFTER TRYING OUT DIFFERENT WAYS OF SPLITTING THE IMAGES.
+2. THERE WERE 9 BINS , EACH WITH AN INCREMENT OF 10. FOR EXAMPLE THE FIRST BIN WAS ANY IMAGE SET BELONGING TO THE SAME TIME-POINT WITH A MEDIAN AREA OCCUPANCY FALLING WITHIN 0-10%.
+3. FIRST IMAGES FROM THE SAME SAMPLE WAS SUBSETTED. NEXT THE IMAGES WERE GROUPED TOGETHER BY TIME-POINTS. NEXT THE MEDIAN AREA WAS CALCULATED PER TIME-POINT WAS CALCULATED. FROM THIS, THE IMAGES FALLING WITHIN EACH AREA BIN IN EACH TIME-POINT WAS SELECTED AS A WHOLE  GROUPS WITH SIMILAR CONFLUENCY TOGETHER. 
+```{r}
+### reduce samples to smaller set of features
+phase <- phase[shorter]
+meta <- phase[1:5]
+
+### plot the time dependent variation to complement S1B
+granularity_names <- colnames(phase)[grep('Granularity', colnames(phase))]
+txt_names <- setdiff(colnames(phase), c(colnames(meta),granularity_names))
+
+grn_df <- phase[granularity_names]
+txt_df <- phase[txt_names]
+
+### z-normalize 
+#grn_df <- as.data.frame(apply(grn_df, 2, standardise))
+grn_df <- cbind(meta, grn_df)
+
+grn_melt <- reshape2::melt(grn_df, value.name = 'grn_score', id.vars=colnames(meta))
+grn_melt$TimePt <- factor(grn_melt$TimePt, levels=timePt_levels)
+
+grn_melt <- grn_melt %>% 
+  group_by(Sample, variable) %>% 
+  mutate(z_score = scale(grn_score),
+         sd_orig = sd(grn_score)) %>%
+  ungroup()
+
+grn_melt$variable <- gsub('_', ' ', grn_melt$variable)
+
+#txt_df <- as.data.frame((apply(txt_df, 2, standardise)))
+txt_df <- cbind(meta, txt_df)
+
+txt_melt <- reshape2::melt(txt_df, value.name = 'txt_score', id.vars=colnames(meta))
+txt_melt$TimePt <- factor(txt_melt$TimePt, levels = timePt_levels)
+
+txt_melt <- txt_melt %>% 
+  group_by(Sample, variable) %>%
+  mutate(z_score = scale(txt_score),
+         sd_orig = sd(txt_score)) %>%
+  ungroup()
+
+txt_melt$variable <- gsub('_00', '', txt_melt$variable)
+```
+
+FOLDER PATH TO SAVE SUPPLEMENTARY FIGURES 2 IMAGES
+```{r}
+
+supplementary_fig_save_path <- paste0(figures_filepath, 'Sup_Fig_S2/')
+dir.create(paste0(figures_filepath, '/Sup_Fig_S2/'))
+
+```
+
+GENERATING PLOTS FOR SUPPLEMENTARY FIGURE 2A AND 2B
+```{r}
+
+### WRITE PLOTTING FUNCTIONS
+generate_pretty_plots <- function(df_melt, score_col, output_file, feature_names, log=FALSE) {
+  df_melt$variable <- factor(df_melt$variable, levels = feature_names)
+  
+  
+  if(log==T){
+    log_selection='log10'
+    y_axis_title = 'Z-normalized Score ± SE (log10)'
+
+  }
+  else{
+    log_selection='identity'
+    y_axis_title = 'Z-normalized Score ± SE'
+  }
+  
+  plots <- list()
+  unique_samples <- unique(df_melt$Sample)
+  
+  for (i in seq_along(unique_samples)) {
+    sample_data <- df_melt[df_melt$Sample == unique_samples[i], ]
+    
+    plots[[i]] <- ggline(sample_data, 
+                         x = "TimePt", 
+                         y = score_col, 
+                         group = "variable", 
+                         add = "mean_se", 
+                         error.plot = 'errorbar',
+                         color = "variable", 
+                         plot_type = "l",
+                         size = 0.45,
+    ) +
+      scale_color_manual(values = custom_colors) +
+      theme_classic(base_size = 12) +
+      geom_hline(yintercept = 0) +
+      scale_y_continuous(trans=log_selection) +
+
+      theme(
+        legend.position = "right",
+        legend.key.size = unit(0.8, 'cm'),
+        legend.text = element_text(size = 21),
+        legend.key.spacing.y = unit(2, 'pt'),
+        legend.title = element_blank(),
+        axis.title.y = element_text(size = 13, face = "bold"),
+        axis.title.x = element_text(size = 13, face = 'bold'),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_text(size = 12),
+        plot.title = element_text(hjust = 0, size = 21, face = "bold")
+      ) +
+      labs(
+        title = paste0( unique_samples[i]),
+        y = y_axis_title,
+        x = "Time"
+      )
+  }
+  
+  pdf(file = output_file, width = 18, height = 12)
+  print(ggarrange(plotlist = plots, 
+                  ncol = 4,
+                  nrow = 4,
+                  common.legend = TRUE,
+                  legend = "right"))
+  dev.off()
+}
+```
+
+GRN plotting
+```{r, include=FALSE, warning=FALSE}
+
+generate_pretty_plots(
+  df_melt = grn_melt,
+  score_col = "grn_score",
+  log=F,
+  output_file = paste0(supplementary_fig_save_path, 'S2_A_support_grn.pdf'),
+  feature_names = names(custom_colors)[grepl("Granularity", names(custom_colors))]
+)
+
+```
+
+
+TXT plotting
+```{r, include=FALSE, warning=FALSE}
+
+generate_pretty_plots(
+  df_melt = txt_melt,
+  score_col = "txt_score",
+  log=T,
+  output_file = paste0(supplementary_fig_save_path, "S2_B_support_txt.pdf"),
+  feature_names = names(custom_colors)[!grepl("Granularity", names(custom_colors))]
+)
+
+```
+
+PLOT LEGENDS SEPARATE
+```{r}
+# GRN legend
+pdf(paste0(save_dir_path, "S2_B_support_grn_legend.pdf"), width = 4, height = 6)
+ggplot(data.frame(x = 1, y = 1, variable = names(custom_colors)[grepl("Granularity", names(custom_colors))]), 
+       aes(x, y, color = variable)) +
+  geom_point() +
+  scale_color_manual(values = custom_colors[grepl("Granularity", names(custom_colors))]) +
+  theme_void() +
+  theme(legend.position = "right", legend.title = element_blank()) +
+  guides(color = guide_legend(override.aes = list(size = 3)))
+dev.off()
+```
+
+```{r}
+# TXT legend
+pdf(paste0(save_dir_path, "S2_B_support_txt_legend.pdf"), width = 4, height = 6)
+ggplot(data.frame(x = 1, y = 1, variable = names(custom_colors)[!grepl("Granularity", names(custom_colors))]), 
+       aes(x, y, color = variable)) +
+  geom_point() +
+  scale_color_manual(values = custom_colors[!grepl("Granularity", names(custom_colors))]) +
+  theme_void() +
+  theme(legend.position = "right", legend.title = element_blank()) +
+  guides(color = guide_legend(override.aes = list(size = 3)))
+dev.off()
+```
+
+SPLIT DATA POINTS INTO CONFLUENCY GROUPS - 9 GROUPS
+```{r}
+
+df1 <- phase[!(phase$Sample %in% c('G566','G583')),] %>% as.data.frame(.)
+
+### samples imaged at 12hrly intervals so this was processed separately.
+df2 <- phase[(phase$Sample %in% c('G566','G583')),] %>% as.data.frame(.)
+
+### Prepare cellprofiler data for normalization 
+df_list_tp_subsetted <- list()
+
+for (confluency in 1:9){
+  ### subset data from phase dataset and then perform z-normalization
+  tp_AreaMax <- data.frame()
+  for (c in 1:length(levels(factor(df1$Sample)))){
+    S <- levels(factor(df1$Sample))[c]
+    sample <- df1[df1$Sample==S,]
+    tp <- sample %>% group_by(TimePt) %>% summarise(Avg=median(Area))
+    t <- subset(tp, Avg > confluency*0.1 & Avg < (confluency+1)*0.1)
+    s <- subset(sample, TimePt %in% t$TimePt)
+    tp_AreaMax <- rbind(tp_AreaMax, s)
+  }
+  
+  for (c in 1:length(levels(factor(df2$Sample)))){
+    S <- levels(factor(df2$Sample))[c]
+    sample <- df2[df2$Sample==S,]
+    tp <- sample %>% group_by(TimePt) %>% summarise(Avg=median(Area))
+    t <- subset(tp, Avg > confluency*0.1 & Avg < (confluency+1)*0.1)
+    s <- subset(sample, TimePt %in% t$TimePt)
+    tp_AreaMax <- rbind(tp_AreaMax, s)
+  }
+  
+  df_list_tp_subsetted[[confluency]] <- tp_AreaMax
+  
+}
+
+```
+
+
+Clean up
+```{r}
+
+### remove sample G800 as it only contains a single row
+df_list_tp_subsetted[[1]] <- subset(df_list_tp_subsetted[[1]], Sample!='G800')
+
+```
+
+
+```{r}
+
+### plot the distribution of the confluencies
+sample_names <- unique(unlist(lapply(df_list_tp_subsetted, function(x) x$Sample)))
+colors_to_map <- cols_vivid
+#names(colors_to_map) <- sample_names
+names(colors_to_map) <- c("G523", "G549", "G564", "G566", "G583", "G729", "G797", "G799", "G800", "G837", "G851", "G876", "G861", "G885", "G895")
+
+glist <- list()
+
+for (i in 1:length(df_list_tp_subsetted)){  
+      glist[[i]] <- df_list_tp_subsetted[[i]] %>% 
+        ggplot(aes(x=Sample, y=Area, fill=Sample)) + 
+        geom_boxplot() + 
+        geom_point(size=0.1) +
+        theme_minimal() + 
+        scale_fill_manual(values=colors_to_map) +
+        theme(axis.text.x = element_text(angle = 90, hjust = 1, size=21),
+              axis.text.y = element_text(size=21),
+              axis.title.x = element_blank(),
+              axis.title.y = element_text(size=24), 
+              legend.position='none') + 
+        labs(x='Sample', y='Area') +
+        ylim(0,1)
+}
+```
+
+
+###------------------------------------------------------------------####
+### SUPP FIGURE S3A
+###------------------------------------------------------------------####
+```{r}
+
+supplementary_fig_save_path <- paste0(figures_filepath, '/Sup_Fig_S3/')
+dir.create(paste0(supplementary_fig_save_path))
+
+pdf(file = paste0(supplementary_fig_save_path,'S3_A.pdf'), width=42, height=6)
+ggarrange(plotlist=glist, ncol=9, nrow=1)
+dev.off()
+
+```
+
+Save nromalized data and proceed with actual biological analysis
+```{r}
+saveRDS(df_list_tp_subsetted, paste0(save_dir_path , '/df_list_tp_subsetted.rds'))
+
+remove(list=ls())
+
+```

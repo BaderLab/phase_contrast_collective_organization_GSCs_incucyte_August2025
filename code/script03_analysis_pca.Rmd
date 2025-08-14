@@ -1,0 +1,767 @@
+---
+title: "script03_analysis"
+author: "Shamini Ayyadhury"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+PACKAGES TO LOAD
+```{r}
+library(ggplot2)  
+library(colorspace)
+library(cowplot)
+library(tidyr)
+library(ggpubr)
+library(dplyr)
+library(effectsize)
+library(ggthemes)
+library(forcats)
+library(PCAtools) ### note this version 2.6.0 requires a downgrade in matrixStats - remotes::install_github("HenrikBengtsson/matrixStats", ref="1.1.0")
+
+```
+
+
+CUSTOM COLOR
+```{r}
+
+# --- Color Palette ---
+custom_colors <- c(
+  "Entropy" = "#e41a1c",
+  "SumEntropy" = "#ff7f00",
+  "DifferenceEntropy" = "#fdbf6f",
+  "Angular2ndMoment" = "#b2df8a",
+  "InverseDifferenceMoment" = "#33a02c",
+  "SumAverage" = "#1f78b4",
+  "Variance" = "#a6cee3",
+  "SumVariance" = "#6a3d9a",
+  "DifferenceVariance" = "#cab2d6",
+  "Correlation" = "#b15928",
+  "Contrast" = "#e78ac3",
+  "InfoMeas1" = "#8dd3c7",
+  "InfoMeas2" = "#fb8072",
+  "Granularity 1" = "#8c510a",
+  "Granularity 2" = "#d8b365",
+  "Granularity 3" = "#f6e8c3",
+  "Granularity 4" = "#c7eae5",
+  "Granularity 5" = "#5ab4ac",
+  "Granularity 6" = "#01665e",
+  "Granularity 7" = "#762a83",
+  "Granularity 8" = "#af8dc3",
+  "Granularity 9" = "#e7d4e8",
+  "Granularity 10" = "#66c2a5",
+  "Granularity 11" = "#fc8d62",
+  "Granularity 12" = "#8da0cb",
+  "Granularity 13" = "#e78ac3",
+  "Granularity 14" = "#a6d854",
+  "Granularity 15" = "#ffd92f",
+  "Granularity 16" = "#e5c494"
+)
+
+
+```
+
+
+FILE/FOLDER PATHS
+###------------------------------------------------------------------#### 
+```{r}
+home <- path.expand('~')
+path_to_repo <- paste0(home,'/Documents/professional/research/PostdoctoralResearch_2020/Projects/PatternRecognitionInGSCs_UsingCV/')
+script_path <- paste0(path_to_repo,'/scripts_final/')
+out <- paste0(path_to_repo,'out/')
+
+save_dir_path <- paste0(out, 'script03_output_files/')
+dir.create(save_dir_path)
+
+figures_filepath <- paste0(out, 'figures_final/')
+dir.create(figures_filepath)
+
+tables_path <-  paste0(out,'tables_final/')
+dir.create(tables_path)
+```
+
+LOAD DATA
+###------------------------------------------------------------------####
+```{r}
+source(paste0(script_path,"code/source_scripts/sourceData_General_variables_and_functions.R"))
+
+GSC.gsva <- read.csv(paste0(path_to_repo,'/datasets_final/manuscript_analysis_data/bulk_RNA/GSC.gsva.csv'), row.names=1)
+phase <- read.csv(paste0(out, 'script01_output_files/final_dataset_afterQC.csv'), row.names = 1)
+
+df_list_tp_subsetted <- readRDS(paste0(out, 'script02_output_files/df_list_tp_subsetted.rds'))
+
+```
+### plot c9 to show the decrease in variablity compare to confluency groups c1-8
+```{r}
+# Load confluency group 9 data
+df9 <- df_list_tp_subsetted[[9]]
+# --- Melt texture & granularity ---
+texture_cols <- grep("_00$", names(df9), value = TRUE)
+granularity_cols <- grep("^Granularity_", names(df9), value = TRUE)
+
+# Melt texture features
+txt_melt <- df9 %>%
+  select(Sample, TimePt, all_of(texture_cols)) %>%
+  pivot_longer(cols = -c(Sample, TimePt), names_to = "variable", values_to = "score") %>%
+  mutate(group = "Texture")
+
+# Melt granularity features
+grn_melt <- df9 %>%
+  select(Sample, TimePt, all_of(granularity_cols)) %>%
+  pivot_longer(cols = -c(Sample, TimePt), names_to = "variable", values_to = "score") %>%
+  mutate(group = "Granularity")
+
+# Combine and standardize per Sample
+grn_melt <- grn_melt %>%
+  group_by(Sample, variable) %>%
+  mutate(z_score = scale(score),
+         sd_orig = sd(score)) %>%
+  ungroup()
+
+txt_melt <- txt_melt %>%
+  group_by(Sample, variable) %>%
+  mutate(z_score = scale(score),
+         sd_score = sd(score)) %>%
+  ungroup()
+
+
+txt_melt$variable <- gsub('_00', '', txt_melt$variable)
+grn_melt$variable <- gsub('_', ' ', grn_melt$variable)
+
+```
+
+```{r}
+
+
+for (smpl in 1:length(unique(txt_melt$Sample))){
+    df <- txt_melt[txt_melt$Sample == unique(txt_melt$Sample)[smpl], ]
+    
+    means <- mean(df$z_score, na.rm=T)
+    print(means)
+    
+}
+
+
+
+```
+
+
+
+# --- Plot Function ---
+```{r}
+generate_plot_group9 <- function(df_melt, out_file, log=FALSE) {
+  df_melt$variable <- factor(df_melt$variable, levels = names(custom_colors))
+  
+  plots <- lapply(unique(df_melt$Sample), function(smpl) {
+    pdat <- df_melt[df_melt$Sample == smpl, ]
+    
+    if(log==TRUE){
+      log_selection = 'log10'
+    }
+    else(log_selection = 'identity')
+    #means <- mean(pdat$z_score, na.rm=F)
+    
+    ggline(pdat,
+           x = "TimePt", y = "z_score",  # CHANGED from 'score' to 'z_score'
+           group = "variable", color = "variable", error.plot = 'errorbar',
+           add = "mean_se", plot_type = "l", size = 0.25) +
+      scale_color_manual(values = custom_colors) +
+      theme_classic(base_size = 12) +
+      geom_hline(yintercept = 0) +
+      theme(
+        legend.position = "right",
+        legend.key.size = unit(0.8, 'cm'),
+        legend.text = element_text(size = 21),
+        legend.key.spacing.y = unit(2, 'pt'),
+        legend.title = element_blank(),
+        axis.title.y = element_text(size = 15, face = "bold"),
+        axis.title.x = element_text(size = 15, face = 'bold'),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.text.y = element_text(size = 12),
+        plot.title = element_text(hjust = 0, size = 21, face = "bold")
+      ) +
+      labs(
+        title = smpl,
+        y = "Z-normalized Score ± SE",
+        x = "Time"
+      ) +
+      scale_y_continuous(trans=log_selection)
+  })
+
+  pdf(out_file, width = 18, height = 12)
+  print(ggarrange(plotlist = plots, ncol = 4, nrow = 3, common.legend = TRUE, legend = "right"))
+  dev.off()
+}
+
+```
+
+```{r}
+
+
+supplementary_fig_save_path <- paste0(figures_filepath, 'Sup_Fig_S4/')
+
+
+```
+
+
+```{r, include=FALSE, warning=FALSE}
+
+
+# --- Create directory if it doesn't exist ---
+if (!dir.exists(supplementary_fig_save_path)) {
+  dir.create(supplementary_fig_save_path)
+}
+
+# --- Generate and Save Plots ---
+#generate_plot_group9(grn_melt, paste0(supplementary_fig_save_path, "S4_A_group9_grn.pdf"))
+#generate_plot_group9(txt_melt, paste0(supplementary_fig_save_path, "S4_B_group9_txt.pdf"), log=T)
+
+
+```
+
+
+NORMALIZATION AND STANDARDIZATION BY CONFLUENCY GROUPS
+```{r}
+phase <- phase[shorter]
+
+pt.size=1.5
+features=34
+new_df_list <- list()
+for (i in 1:9){
+  d <- df_list_tp_subsetted[[i]]
+  new_df <- data.frame()
+  
+  n=length(levels(factor(d$Sample)))
+  for (l in 1:n){
+    s <- levels(factor(d$Sample))[l]
+    df <- subset(d, Sample==s)
+    meta <- df[1:5]
+    df <- df[6:features]
+    df <- apply(df, 2, FUN=function(x)if(mean(x)==0)
+    {x=x}
+    else{x/max(x)}) %>% as.data.frame(.) ### note keep this
+    df <- apply(df,1, standardize)
+    df <- cbind(meta,t(df)) 
+    df <- df %>% .[order(.$TimePt),]
+    
+    meta <- df[1:5]
+    df <- df[6:features]  %>% t(.) %>% as.data.frame(.)
+    rownames(meta) <- colnames(df)
+    con_grp <- rep(paste0('C',i), nrow(meta))
+    meta <- cbind(con_grp, meta)
+    df <- cbind(meta, t(df))
+    
+    colnames(df) <- c('con_grp', colnames(phase))
+    new_df <- rbind(new_df, df)
+    
+  }
+  new_df_list[[i]] <- new_df
+}
+```
+
+PLOT PCA FOR CONFLUENCY GROUPS 1-9
+```{r}
+
+features=35
+pca_list <- list()
+pca_loadings_list <- list()
+p_objects <- list()
+col_means_list <- list()
+pc1_loadings <- pc2_loadings <- pc3_loadings <- shorter[6:34] %>% as.data.frame(.)
+g1 <- list()
+g2 <- list()
+sc <- list()
+pt.size=3.5
+var_pc <- as.data.frame(matrix(ncol=1, nrow=0))
+
+for (i in 1:9){
+  new_df <- new_df_list[[i]]
+  
+  new_df[is.na(new_df)] <-0
+  meta <- new_df[1:6]
+  data <- new_df[7:features]
+  rownames(data) <- rownames(meta)
+  col_means <- colMeans(data)
+  col_means_list[[i]] <- col_means
+
+  p <- PCAtools::pca(t(data), metadata = meta, center=T, scale=F)
+  
+  pcs <- which(cumsum(p$variance)>90)
+  pc1 <- pcs[1]
+  pc2 <- which(cumsum(p$variance)>75)[1]
+  
+  var <- sort(which((p$variance[1:length(pcs)-1]-p$variance[2:(length(pcs))]) > 0.1), decreasing=T)[1]
+  minPC <- min(pc1, var)
+  
+  sc[[i]] <- PCAtools::screeplot(p, colBar='darkblue', axisLabSize = 24, components = 1:(pc1+1), title = '')
+  pca_df <- cbind(meta,p$rotated)
+  colnames(pca_df) <- c('con_grp','Media','Sample','TimePt','Well','Area', paste0('PC', 1:ncol(p$rotated)))
+  var_pc <- rbind(var_pc, (p$variance[1] + p$variance[2]))
+  
+  ### save rotations
+  
+  pc1_loadings <- cbind(pc1_loadings, p[["loadings"]][["PC1"]])
+  pc2_loadings <- cbind(pc2_loadings, p[["loadings"]][["PC2"]])
+  pc3_loadings <- cbind(pc3_loadings, p[["loadings"]][["PC3"]])
+  
+  pca_df <- cbind(pca_df,data)
+  pca_list[[i]] <- pca_df
+  
+  p_objects[[i]] <- p
+}
+
+```
+
+
+###------------------------------------------------------------------####
+### SUPP FIGURE S3B
+###------------------------------------------------------------------####
+
+```{r}
+
+supplementary_fig_save_path <- paste0(figures_filepath, 'Sup_Fig_S3/')
+
+```
+
+
+```{r}
+
+
+if(dir.exists(supplementary_fig_save_path)==F){
+  dir.create(supplementary_fig_save_path)}
+
+
+pdf(file = paste0(supplementary_fig_save_path,'/S3_B_var.pdf'), width=42, height=6)
+ggarrange(plotlist=sc, nrow=1, ncol=9)
+dev.off()
+
+```
+
+Print the range of pc variance
+```{r}
+min(var_pc)
+max(var_pc)
+
+```
+
+SAVE FILES
+```{r}
+saveRDS(p_objects, paste0(save_dir_path, 'pca_objects.Rds'))
+saveRDS(col_means_list, paste0(save_dir_path, 'colMeans.Rds'))
+```
+
+PLOT PC1 and PC2 
+```{r}
+features=35
+pt.size=3.5
+
+for (i in 1:9){
+  pca_df <- pca_list[[i]]
+  g1[[i]] <- ggplot(pca_df, aes(PC2, PC1, color=Sample)) +
+    geom_jitter(size=pt.size) +
+    theme_minimal() +
+    scale_color_manual(values=c(cols_vivid, col_bold)) +
+    theme(legend.position = 'none', 
+          axis.title = element_text(size=21),
+          axis.line = element_line(color='black'),
+          axis.text.x = element_blank(),
+          axis.text.y = element_text(angle=45, size=18)) +
+    #geom_text_repel(aes(label=Sample), size=2.5) +
+    xlab("PC2") + ylab("PC1")
+  
+  g2[[i]] <- ggplot(pca_df, aes(PC2, PC3, color=Sample)) +
+    geom_jitter(size=pt.size) +
+    theme_minimal() +
+    scale_color_manual(values=c(cols_vivid, col_bold)) +
+    theme(legend.position = 'none', 
+          axis.line = element_line(color='black'),
+          axis.text.x = element_blank(),
+          axis.text.y = element_text(angle=45, size=15)) +
+    #geom_text_repel(aes(label=Sample), size=3) +
+    xlab("PC2") + ylab("PC3")
+  
+}
+
+```
+
+
+Plot the order of samples along PC1 and PC2
+```{r, height=6, width=12}
+sample_names <- unique(unlist(lapply(pca_list, function(x) x$Sample)))
+colors_to_map <- cols_vivid
+names(colors_to_map) <- c("G523", "G549", "G564", "G566", "G583", "G729", "G797", "G799", "G800", "G837", "G851", "G876", "G861", "G885", "G895")
+
+all_samples <- names(colors_to_map)   # your 15 samples
+
+g1 <- vector("list", 9)
+
+for (p in 1:9) {
+  pca_df <- as.data.frame(pca_list[[p]])
+  pca_df <- dplyr::arrange(pca_df, PC1)
+
+  # keep a consistent full set of levels across plots
+  pca_df$Sample <- factor(pca_df$Sample, levels = all_samples)
+
+  g1[[p]] <- ggplot(pca_df, aes(PC1, reorder(Sample, PC1), fill = Sample)) +
+    geom_violin() +
+    geom_jitter(size = 0.3) +
+    theme_minimal() +
+    scale_fill_manual(
+      values = colors_to_map,
+      breaks = all_samples,     # show all, in this order
+      drop   = FALSE            # don't drop unused levels
+    ) +
+    theme(
+      legend.position = "right",      # keep for per-plot; we'll collect later
+      axis.title = element_text(size = 24),
+      axis.line  = element_line(color='black'),
+      axis.text.x = element_blank(),
+      axis.text.y = element_text(angle = 40, size = 15)
+    ) +
+    xlab("PC1") + ylab("Sample") +
+    guides(fill = guide_legend(nrow = 2, byrow = TRUE))  # wrap legend into 2 rows
+}
+
+# Collect legend and give it room so it doesn't clip
+combined_plot <- wrap_plots(g1) +
+  plot_layout(guides = "collect") &
+  theme(
+    legend.position   = "top",
+    legend.key.size   = unit(0.35, "cm"),
+    legend.text       = element_text(size = 9),
+    legend.box.margin = margin(2, 2, 2, 2)
+  )
+
+print(combined_plot)
+```
+
+
+###------------------------------------------------------------------####
+### FIGURE S3C1
+###------------------------------------------------------------------####
+```{r}
+pdf(file = paste0(supplementary_fig_save_path,'S3_C1.pdf'), width=42, height=6)
+ggarrange(plotlist=g1, nrow=1, ncol=9)
+dev.off()
+```
+
+```{r}
+g2 <- list()
+
+for (p in 1:9){
+  
+  pca_df <- pca_list[[p]] %>% as.data.frame()
+  pca_df <- arrange(pca_df, PC2)
+  g2[[p]] <- ggplot(pca_df, aes(PC2, reorder(Sample, PC2), fill=Sample)) +
+    geom_violin() +
+    geom_jitter(size=0.3) +
+    theme_minimal() +
+    scale_fill_manual(values=colors_to_map) +
+    theme(legend.position = 'none', 
+          axis.title = element_blank(),
+          axis.line = element_line(color='black'),
+          axis.text.x = element_blank(),
+          axis.text.y = element_text(angle=35, size=15)) +
+    #geom_text_repel(aes(label=Sample), size=2.5) +
+    xlab("PC2") + ylab("Sample")
+  
+}
+
+```
+
+
+
+###------------------------------------------------------------------####
+### FIGURE S3C2
+###------------------------------------------------------------------####
+```{r}
+
+pdf(file = paste0(supplementary_fig_save_path,'S3_C2.pdf'), width=42, height=6)
+ggarrange(plotlist=g2, nrow=1, ncol=9)
+dev.off()
+
+```
+
+
+### BEFORE CHANGING PC DIRECTIONS
+#CALCULATE MEAN PC SCORES BY SAMPLE FOR ALL CONFLUENCY GROUPS
+```{r}
+pca_df_summary <- list()
+for (l in 1:9){
+  df <- pca_list[[l]]
+  meta_df <- df[1:6]
+  df <- cbind(meta_df['Sample'], df[7:20])
+  df <- df %>% group_by(Sample) %>% summarise_at(vars(paste0('PC', 1:14)), mean)
+  pca_df_summary[[l]] <- df
+}
+```
+
+#CORRELATION BETWEEN MEAN PC SCORES WITH GSVA SCORES
+```{r}
+pca_list_medPC_corGSVA <- list()
+pca_list_medPC_corGSVA_pvalue <- list()
+GSC.gsva <- GSC.gsva
+sig <- rownames(GSC.gsva)
+
+for (pc in 1:14){
+  final_correlation_medPC <- as.data.frame(matrix(nrow=111))
+  final_correlation_medPC_pvalue <- as.data.frame(matrix(nrow=111))
+  
+  for (con in 1:9){
+    df <- pca_df_summary[[con]] ### select confluency group
+    to_plot1 <- df[pc+1] %>% as.data.frame(.) ### select PC to focus on for the rest of the analysis
+    gsva_short <- t(GSC.gsva) %>% as.data.frame(.) %>% .[df$Sample,]
+    final_col <- data.frame()  
+    for (x in 1:111){
+      ctype <- sig[x] ### then select the cell types to focus
+      #gsva_short <- gsva_short[,ctype]
+      g <- gsva_short[,colnames(gsva_short) %in% ctype]
+      #final <- data.frame()
+      #to_plot2 <- g[col]
+      cor <- cor.test(g, to_plot1[,1])
+      #cor <- lm(to_plot1[,1]~to_plot2[,1])
+      #r.sq <- summary(cor)$r.squared
+      #m=cor$coefficients[2]
+      p <- cor$estimate %>% round(.,3)
+      d <- data.frame(label=ctype,correlation=p , p_value=cor$p.value)
+      final_col <- rbind(final_col, d)
+    }
+    rownames(final_correlation_medPC_pvalue) <- rownames(final_correlation_medPC) <- final_col$label
+    final_correlation_medPC <- cbind(final_correlation_medPC, final_col[2])
+    final_correlation_medPC_pvalue <- cbind(final_correlation_medPC_pvalue, final_col[3])
+  }
+  final_correlation_medPC <- final_correlation_medPC[2:10]
+  colnames(final_correlation_medPC) <- c(paste0('pixelBio', 1:9))
+  
+  pca_list_medPC_corGSVA[[pc]] <- final_correlation_medPC
+  
+  final_correlation_medPC_pvalue <- final_correlation_medPC_pvalue[2:10]
+  colnames(final_correlation_medPC_pvalue) <- paste0('pixelBio', 1:9)
+  pca_list_medPC_corGSVA_pvalue[[pc]] <- final_correlation_medPC_pvalue 
+  
+}
+
+```
+
+SAVE SUPP FIGURE 4A
+```{r}
+
+supplementary_fig_save_path <- paste0(figures_filepath, 'Sup_Fig_S4/')
+
+if(dir.exists(supplementary_fig_save_path)==F){
+  dir.create(supplementary_fig_save_path)
+  }
+
+```
+
+
+## See if we change the signs - materials and methods
+#TO CHECK THE CONGRUENCY BETWEEN CONFLUENCY GROUPS
+```{r}
+
+hm_col <- sequential_hcl(45, palette='Inferno', rev=T)
+hm_col_neg<- sequential_hcl(45, palette='GnBu')
+
+for (hm in 1:9){
+  data <- pca_list_medPC_corGSVA[[hm]]
+  #colours <- data$col
+  #names(colours) <- data
+  meta <- paste0('C', 1:9)
+  data.cor <- cor(data)
+  rownames(data.cor) <- colnames(data.cor) <- meta
+
+
+  ###------------------------------------------------------------------####
+  ### FIGURE S4B
+  ###------------------------------------------------------------------####
+  pdf(paste0(supplementary_fig_save_path, 'S4_A', hm, '.pdf'), width=6.6, height=6)
+  pheatmap::pheatmap(data.cor, 
+                     #annotation_col = meta, 
+                     #annotation_colors = list(cell_type_group=colours), 
+                     show_rownames = T, 
+                     annotation_legend = F,
+                     legend = T,
+                     border_color = NA, 
+                     cluster_cols =F,
+                     cluster_rows = F,
+                     fontsize = 21,
+                     color = hm_col
+  )
+  dev.off()
+}
+###------------------------------------------------------------------####
+### FIGURE END
+```
+
+
+CHANGE THE direction for easy comparison across confluency groups
+```{r}
+### PC1
+d <- pca_list[[5]]
+d$PC1 <- (d$PC1)*(-1)
+pca_list[[5]] <- d
+
+d <- pca_list[[6]]
+d$PC1 <- (d$PC1)*(-1)
+pca_list[[6]] <- d
+
+d <- pca_list[[7]]
+d$PC1 <- (d$PC1)*(-1)
+pca_list[[7]] <- d
+
+d <- pca_list[[8]]
+d$PC1 <- (d$PC1)*(-1)
+pca_list[[8]] <- d
+
+d <- pca_list[[9]]
+d$PC1 <- (d$PC1)*(-1)
+pca_list[[9]] <- d
+
+### PC2
+
+d <- pca_list[[2]]
+d$PC2 <- (d$PC2)*(-1)
+pca_list[[2]] <- d
+
+d <- pca_list[[3]]
+d$PC2 <- (d$PC2)*(-1)
+pca_list[[3]] <- d
+
+d <- pca_list[[4]]
+d$PC2 <- (d$PC2)*(-1)
+pca_list[[4]] <- d
+
+d <- pca_list[[6]]
+d$PC2 <- (d$PC2)*(-1)
+pca_list[[6]] <- d
+
+d <- pca_list[[9]]
+d$PC2 <- (d$PC2)*(-1)
+pca_list[[9]] <- d
+
+```
+
+
+SAVE FILES
+
+```{r}
+
+saveRDS(pca_list, paste0(save_dir_path, 'pca_output_of_wholeImages_by_congrps.rds'))
+#remove(list=c('pca_list_medPC_corGSVA','pca_list_medPC_corGSVA_pvalue', 'pca_loadings_list'))
+
+```
+
+BEFORE CHANGING PC DIRECTIONS
+
+```{r}
+#CALCULATE MEAN PC SCORES BY SAMPLE FOR ALL CONFLUENCY GROUPS
+pca_df_summary <- list()
+for (l in 1:9){
+  df <- pca_list[[l]]
+  meta_df <- df[1:6]
+  df <- cbind(meta_df['Sample'], df[7:20])
+  df <- df %>% group_by(Sample) %>% summarise_at(vars(paste0('PC', 1:14)), mean)
+  pca_df_summary[[l]] <- df
+}
+
+#CORRELATION BETWEEN MEAN PC SCORES WITH GSVA SCORES
+pca_list_medPC_corGSVA <- list()
+pca_list_medPC_corGSVA_pvalue <- list()
+GSC.gsva <- GSC.gsva
+sig <- rownames(GSC.gsva)
+
+for (pc in 1:14){
+  final_correlation_medPC <- as.data.frame(matrix(nrow=111))
+  final_correlation_medPC_pvalue <- as.data.frame(matrix(nrow=111))
+  
+  for (con in 1:9){
+    df <- pca_df_summary[[con]] ### select confluency group
+    to_plot1 <- df[pc+1] %>% as.data.frame(.) ### select PC to focus on for the rest of the analysis
+    gsva_short <- t(GSC.gsva) %>% as.data.frame(.) %>% .[df$Sample,]
+    final_col <- data.frame()  
+    for (x in 1:111){
+      ctype <- sig[x] ### then select the cell types to focus
+      #gsva_short <- gsva_short[,ctype]
+      g <- gsva_short[,colnames(gsva_short) %in% ctype]
+      #final <- data.frame()
+      #to_plot2 <- g[col]
+      cor <- cor.test(g, to_plot1[,1])
+      #cor <- lm(to_plot1[,1]~to_plot2[,1])
+      #r.sq <- summary(cor)$r.squared
+      #m=cor$coefficients[2]
+      p <- cor$estimate %>% round(.,3)
+      d <- data.frame(label=ctype,correlation=p , p_value=cor$p.value)
+      final_col <- rbind(final_col, d)
+    }
+    rownames(final_correlation_medPC_pvalue) <- rownames(final_correlation_medPC) <- final_col$label
+    final_correlation_medPC <- cbind(final_correlation_medPC, final_col[2])
+    final_correlation_medPC_pvalue <- cbind(final_correlation_medPC_pvalue, final_col[3])
+  }
+  final_correlation_medPC <- final_correlation_medPC[2:10]
+  colnames(final_correlation_medPC) <- c(paste0('pixelBio', 1:9))
+  
+  pca_list_medPC_corGSVA[[pc]] <- final_correlation_medPC
+  
+  final_correlation_medPC_pvalue <- final_correlation_medPC_pvalue[2:10]
+  colnames(final_correlation_medPC_pvalue) <- paste0('pixelBio', 1:9)
+  pca_list_medPC_corGSVA_pvalue[[pc]] <- final_correlation_medPC_pvalue 
+  
+}
+
+colnames(pc1_loadings) <- colnames(pc2_loadings) <- colnames(pc3_loadings) <- c('Texture',paste0("C", 1:9)) 
+
+pc1_loadings$C5 <- pc1_loadings$C5 * (-1)
+pc1_loadings$C6 <- pc1_loadings$C6 * (-1)
+pc1_loadings$C7 <- pc1_loadings$C7 * (-1)
+pc1_loadings$C8 <- pc1_loadings$C8 * (-1)
+pc1_loadings$C9 <- pc1_loadings$C9 * (-1)
+
+pc2_loadings$C2 <- pc2_loadings$C2 * (-1)
+pc2_loadings$C3 <- pc2_loadings$C3 * (-1)
+pc2_loadings$C4 <- pc2_loadings$C4 * (-1)
+pc2_loadings$C6 <- pc2_loadings$C6 * (-1)
+pc2_loadings$C9 <- pc2_loadings$C9 * (-1)
+
+```
+
+
+SAVE SUPPLEMENTARY TABLES
+```{r}
+dir.create(paste0(tables_path, 'S_Table1'))
+write.csv(GSC.gsva, paste0(tables_path, "/S_Table1/Tbl_1_GSC_gsva.csv"))
+
+dir.create(paste0(tables_path, 'S_Table2'))
+new_table_path <- paste0(tables_path, 'S_Table2/correlation_gsvaScoresWholeImages_PC')
+
+for (cor in 1:14){
+  write.csv(pca_list_medPC_corGSVA[[cor]], paste0(new_table_path, cor, ".csv"))  
+}
+
+dir.create(paste0(tables_path, 'S_Table3'))
+
+### These are compiled into Table 1
+write.csv(pc1_loadings, paste0(tables_path, "/S_Table3/Tbl_3_pc1_wholeImageLoadings.csv"))
+write.csv(pc2_loadings, paste0(tables_path, "/S_Table3/Tbl_3_pc2_wholeImageLoadings.csv"))
+write.csv(pc3_loadings, paste0(tables_path, "/S_Table3/Tbl_3_pc3_wholeImageLoadings.csv"))
+
+
+#--------------------------------------------------------------------------------#
+### Table end
+```
+
+```{r}
+save(pca_list, pca_list_medPC_corGSVA, pca_list_medPC_corGSVA_pvalue, pc1_loadings, pc2_loadings, pc3_loadings, file=paste0(save_dir_path, '/feature_correlations.Rdata'))
+remove(list=ls())
+```
+

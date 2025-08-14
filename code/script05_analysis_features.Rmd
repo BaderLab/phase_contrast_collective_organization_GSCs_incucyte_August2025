@@ -1,0 +1,749 @@
+---
+title: "script04_analysis"
+author: "Shamini Ayyadhury"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+PACKAGES TO LOAD
+
+```{r}
+
+library(ggplot2)  
+library(colorspace)
+library(tidyr)
+library(dplyr)
+library(ggthemes)
+library(ggpubr)
+library(ggrepel)
+library(effectsize)
+library(scales)
+library(forcats)
+
+```
+
+FILE/FOLDER PATHS
+```{r}
+
+home <- path.expand('~')
+path_to_repo <- paste0(home,'/Documents/professional/research/PostdoctoralResearch_2020/Projects/PatternRecognitionInGSCs_UsingCV/')
+script_path <- paste0(path_to_repo,'scripts_final/')
+out <- paste0(path_to_repo,'out/')
+save_dir_path <- paste0(out, 'script05_output_files/')
+dir.create(save_dir_path)
+
+figures_filepath <- paste0(out, 'figures_final/')
+tables_path <-  paste0(out,'/tables_final/')
+
+```
+
+LOAD DATA
+```{r}
+
+source(paste0(script_path,"code/source_scripts/sourceData_General_variables_and_functions.R"))
+GSC.gsva <- read.csv(paste0(path_to_repo,'/datasets_final/manuscript_analysis_data/bulk_RNA/GSC.gsva.csv'), row.names=1)
+load(paste0(out, 'script03_output_files/feature_correlations.Rdata'))
+
+rownames(pc2_loadings) <- gsub('_00', '', pc2_loadings$Texture)
+
+pca_list_com <- do.call(rbind,pca_list)
+pca_list_com_grn <- pca_list_com[c(1:5, 36:51)]
+df_list_tp_subsetted <- readRDS(paste0(out, 'script02_output_files/df_list_tp_subsetted.rds'))
+
+```
+
+COMBINE TEXTURAL AND GRANULARITY FEATURES
+```{r}
+
+pt.size=1.5
+features=34
+new_df_list <- list()
+for (i in 1:9){
+  d <- df_list_tp_subsetted[[i]]
+  new_df <- data.frame()
+  
+  n=length(levels(factor(d$Sample)))
+  for (l in 1:n){
+    s <- levels(factor(d$Sample))[l]
+    df <- subset(d, Sample==s)
+    meta <- df[1:5]
+    df <- df[6:features]
+    df <- apply(df, 2, FUN=function(x)if(mean(x)==0)
+    {x=x}
+    else{x/max(x)}) %>% as.data.frame(.) ### note keep this
+    #df <- apply(df,1, standardize)
+    df <- cbind(meta,df) 
+    df <- df %>% .[order(.$TimePt),]
+    
+    meta <- df[1:5]
+    df <- df[6:features]  %>% t(.) %>% as.data.frame(.)
+    rownames(meta) <- colnames(df)
+    con_grp <- rep(paste0('C',i), nrow(meta))
+    meta <- cbind(con_grp, meta)
+    df <- cbind(meta, t(df))
+    
+    colnames(df) <- c('con_grp', shorter)
+    new_df <- rbind(new_df, df)
+    
+  }
+  new_df_list[[i]] <- new_df
+}
+
+new_df_list_comb <- do.call(rbind, new_df_list)
+new_df_list_comb_grn <- new_df_list_comb[1:22]
+new_df_list_comb_grn <- reshape2::melt(new_df_list_comb_grn, id.vars=colnames(new_df_list_comb_grn[1:6]))
+
+descriptive <- c('Contrast_00', 'Correlation_00')
+descriptive2 <- c('SumVariance_00', 'Variance_00', 'DifferenceVariance_00', 'InverseDifferenceMoment_00')
+
+entropy <- c('Entropy_00', 'DifferenceEntropy_00', 'SumEntropy_00', 'SumAverage_00')
+entropy2 <- c('Angular2ndMoment_00')
+
+correlation <- c('InfoMeas1_00','InfoMeas2_00')
+
+```
+
+
+PLOT SUPPLEMENTARY FIGURE 5
+```{r}
+
+supplementary_fig_save_path <- paste0(figures_filepath, 'Sup_Fig_S5/')
+
+if(dir.exists(supplementary_fig_save_path)==F){
+  dir.create(supplementary_fig_save_path)}
+
+```
+
+
+
+###------------------------------------------------------------------####
+### SUPPLEMENTARY FIG 5A
+
+```{r}
+
+new_df_list_comb_grn['variable'] <- gsub('_', ' ', new_df_list_comb_grn$variable)
+new_df_list_comb_grn <- new_df_list_comb_grn %>% rename('Image feature'='variable')
+  
+pdf(paste0(supplementary_fig_save_path, 'S5_A.pdf'),  width=9.5, height=7.5)
+ggline(new_df_list_comb_grn, x='con_grp', y='value', color='Image feature', add='mean_sd') +
+  scale_color_manual(values=sequential_hcl('viridis', n=16)) +
+  theme(legend.position = 'right',
+        legend.title = element_text(size=15, face = 'bold'),
+        legend.text = element_text(size=12))
+dev.off()
+
+```
+
+
+###------------------------------------------------------------------####
+### SUPPLEMENTARY FIG 5B
+###------------------------------------------------------------------####
+
+```{r}
+
+new_df_list_comb_txt <- new_df_list_comb[c(1:6,23:35)]
+new_df_list_comb_txt <- reshape2::melt(new_df_list_comb_txt, id.vars=colnames(new_df_list_comb_txt[1:6]))
+new_df_list_comb_txt['variable'] <- gsub('_00', '', new_df_list_comb_txt$variable)
+new_df_list_comb_txt <- new_df_list_comb_txt %>% rename('Image feature'='variable')
+
+pdf(paste0(supplementary_fig_save_path, 'S5_B.pdf'),  width=9.5, height=7.5)
+ggline(new_df_list_comb_txt, x='con_grp', y='value', color='Image feature', add='mean_sd') +
+  scale_color_manual(values=cols_vivid) +
+  theme(legend.position = 'right',
+        legend.title = element_text(size=18, face = 'bold'),
+        legend.text = element_text(size=15),
+        axis.text = element_text(size=15))
+
+dev.off()
+###------------------------------------------------------------------####
+### FIG END
+
+```
+
+
+```{r}
+
+new_df_list_comb_txt_rm_infomeas1 <- subset(new_df_list_comb_txt, `Image feature`!='InfoMeas1')
+
+```
+
+###------------------------------------------------------------------####
+### SUPPLEMENTARY FIG 5B
+###------------------------------------------------------------------####
+```{r}
+pdf(paste0(supplementary_fig_save_path, 'S5_C.pdf'), width=9.5, height=7.5)
+ggline(new_df_list_comb_txt_rm_infomeas1, x='con_grp', y='value', color='Image feature', add='mean_sd') +
+  scale_color_manual(values=cols_vivid) +
+  theme(legend.position = 'right',
+        legend.title = element_text(size=18, face = 'bold'),
+        legend.text = element_text(size=15),
+        axis.text = element_text(size=15))
+dev.off()
+###------------------------------------------------------------------####
+### FIG END
+```
+
+```{r}
+
+pc2_loadings_melt <- reshape2::melt(pc2_loadings, id.vars='Texture')
+
+max(pc2_loadings_melt$value)
+steps_pos <- floor(max(pc2_loadings_melt$value)/0.05)
+
+min(pc2_loadings_melt$value)
+steps_neg <- floor(min(pc2_loadings_melt$value)/0.05)*(-1)
+
+```
+
+
+PLOT THE FEATURE VARIATIONS ALONG PC2 ACROSS CONFLUENCY GROUPS
+```{r}
+
+main_figure_path <- paste0(figures_filepath, 'Figure_03/')
+
+if(dir.exists(main_figure_path)==F){
+  dir.create(main_figure_path)}
+
+```
+
+
+###------------------------------------------------------------------####
+### FIGURE 3A
+###------------------------------------------------------------------####
+```{r}
+cols <- c(sequential_hcl('Magenta', n=steps_pos*3, rev=F), sequential_hcl('Mako', n=steps_neg*3, rev=T))
+
+pdf(paste0(main_figure_path, 'Fig3_A.pdf'), width=3.5, height=10)
+pheatmap::pheatmap(pc2_loadings[2:10],
+                   cluster_rows = F,
+                   cluster_cols = F, 
+                   color = rev(cols),
+                   fontsize = 7,
+                   angle_col = 45,
+                   cellwidth = 15,
+                   cellheight = 24,
+                   border_color = NA)
+dev.off()
+
+```
+
+### InfoMeas 1
+```{r}
+pca_list_com <- do.call(rbind, pca_list)
+glist <- list()
+
+sample_names <- unique(pca_list_com$Sample)
+cols_to_map <- cols_vivid
+names(cols_to_map) <- sample_names
+
+for (c in 1:9) {
+  cgroups <- levels(factor(pca_list_com$con_grp))
+  df <- pca_list_com[pca_list_com$con_grp == cgroups[c],]
+  df$InfoMeas1_00 <- df$InfoMeas1_00 * (-1)
+  lin <- aggregate(InfoMeas1_00 ~ Sample, data = df, FUN = mean)
+  
+  # Reorder Sample levels based on the order of PC2 for plotting purposes
+  df$Sample <- reorder(df$Sample, df$PC2)
+  
+  glist[[c]] <- ggplot(df, aes(Sample, InfoMeas1_00, color=Sample)) +
+    geom_jitter(size = 0.5) +  # Adjust point size here
+    scale_color_manual(values = cols_to_map, 
+                       breaks = levels(df$Sample)) +  # Ensure legend follows the order in the plot
+    geom_line(data = lin, aes(x = Sample, y = InfoMeas1_00, group = 1), size = 0.85, color = "black") +  # Set line color to black
+    theme_minimal() +
+    #geom_hline(yintercept = 0) +
+    theme(legend.position = 'right',
+          legend.key.height = unit(0.3, 'cm'),  # Reduce height of each legend key
+          legend.text = element_text(size = 8),  # Reduce legend text font size
+          axis.title = element_blank(),
+          axis.text.x = element_blank(),
+          axis.text.y = element_text(size=15, color='darkgray'),
+          plot.margin = unit(c(0.15,0.15, 0.75, 0.15), unit='cm'),
+          legend.title = element_blank()) +  # Remove legend title
+    guides(color = guide_legend(override.aes = list(size = 3))) +  # Adjust point size in legend
+    scale_y_continuous(
+        labels = function(x) sprintf("%.1f", x),
+        n.breaks=5)
+        }
+
+```
+
+
+
+###------------------------------------------------------------------####
+### FIGURE 3B2
+```{r}
+pdf(paste0(main_figure_path, 'Fig3_B1_infomeas1.pdf'), width=4.8, height=18)
+ggarrange(plotlist = glist, nrow=9)
+dev.off()
+```
+
+### InfoMeas 2
+```{r}
+#pca_list_com <- do.call(rbind, pca_list)
+glist <- list()
+for (c in 1:9) {
+  cgroups <- levels(factor(pca_list_com$con_grp))
+  df <- pca_list_com[pca_list_com$con_grp == cgroups[c],]
+  lin <- aggregate(InfoMeas2_00 ~ Sample, data = df, FUN = mean)
+  
+  # Reorder Sample levels based on the order of PC2 for plotting purposes
+  df$Sample <- reorder(df$Sample, df$PC2)
+  
+  glist[[c]] <- ggplot(df, aes(Sample, InfoMeas2_00, color=Sample)) +
+    geom_jitter(size = 0.5) +  # Adjust point size here
+    scale_color_manual(values = cols_to_map, 
+                       breaks = levels(df$Sample)) +  # Ensure legend follows the order in the plot
+    geom_line(data = lin, aes(x = Sample, y = InfoMeas2_00, group = 1), size = 0.85, color = "black") +  # Set line color to black
+    theme_minimal() +
+    theme(legend.position = 'right',
+          legend.key.height = unit(0.3, 'cm'),  # Reduce height of each legend key
+          legend.text = element_text(size = 8),  # Reduce legend text font size
+          axis.title = element_blank(),
+          axis.text.x = element_blank(),
+          axis.text.y = element_text(size=18, color='darkgray'),
+          plot.margin = unit(c(0.15,0.15, 0.75, 0.15), unit='cm'),
+          legend.title = element_blank()) +  # Remove legend title
+    guides(color = guide_legend(override.aes = list(size = 3))) +  # Adjust point size in legend
+   scale_y_continuous(
+        labels = function(x) sprintf("%.1f", x),
+        n.breaks=5)
+        }
+```
+
+###------------------------------------------------------------------####
+### FIGURE 3B2
+```{r}
+
+pdf(paste0(main_figure_path, 'Fig3_B2_infomeas2.pdf'), width=4.8, height=18)
+ggarrange(plotlist = glist, nrow=9)
+dev.off()
+
+```
+
+### Inverse difference moment
+#pca_list_com <- do.call(rbind, pca_list)
+```{r}
+glist <- list()
+for (c in 1:9) {
+  cgroups <- levels(factor(pca_list_com$con_grp))
+  df <- pca_list_com[pca_list_com$con_grp == cgroups[c],]
+  lin <- aggregate(InverseDifferenceMoment_00 ~ Sample, data = df, FUN = mean)
+  
+  # Reorder Sample levels based on the order of PC2 for plotting purposes
+  df$Sample <- reorder(df$Sample, df$PC2)
+  
+  glist[[c]] <- ggplot(df, aes(Sample, InverseDifferenceMoment_00, color=Sample)) +
+    geom_jitter(size = 0.5) +  # Adjust point size here
+    scale_color_manual(values = cols_to_map, 
+                       breaks = levels(df$Sample)) +  # Ensure legend follows the order in the plot
+    geom_line(data = lin, aes(x = Sample, y = InverseDifferenceMoment_00, group = 1), size = 0.85, color = "black") +  # Set line color to black
+    theme_minimal() +
+    theme(legend.position = 'right',
+          legend.key.height = unit(0.3, 'cm'),  # Reduce height of each legend key
+          legend.text = element_text(size = 8),  # Reduce legend text font size
+          axis.title = element_blank(),
+          axis.text.x = element_blank(),
+          axis.text.y = element_text(size=18, color='darkgray'),
+          plot.margin = unit(c(0.15,0.15, 0.75, 0.15), unit='cm'),
+          legend.title = element_blank()) +  # Remove legend title
+    guides(color = guide_legend(override.aes = list(size = 3))) +  # Adjust point size in legend
+   scale_y_continuous(
+        labels = function(x) sprintf("%.1f", x),
+        n.breaks=5)
+        }
+
+
+```
+
+###------------------------------------------------------------------####
+### FIGURE 3B2
+```{r}
+
+pdf(paste0(main_figure_path, 'Fig3_C_inversediffmom.pdf'), width=4.8, height=18)
+ggarrange(plotlist = glist, nrow=9)
+dev.off()
+
+```
+
+
+### Correlation
+#pca_list_com <- do.call(rbind, pca_list)
+```{r}
+library(scales)
+
+glist <- list()
+for (c in 1:9) {
+  cgroups <- levels(factor(pca_list_com$con_grp))
+  df <- pca_list_com[pca_list_com$con_grp == cgroups[c],]
+  lin <- aggregate(Correlation_00 ~ Sample, data = df, FUN = mean)
+  
+  # Reorder Sample levels based on the order of PC2 for plotting purposes
+  df$Sample <- reorder(df$Sample, df$PC2)
+  
+  glist[[c]] <- ggplot(df, aes(Sample, Correlation_00, color=Sample)) +
+    geom_jitter(size = 0.5) +  # Adjust point size here
+    scale_color_manual(values = cols_to_map, 
+                       breaks = levels(df$Sample)) +  # Ensure legend follows the order in the plot
+    geom_line(data = lin, aes(x = Sample, y = Correlation_00, group = 1), size = 0.85, color = "black") +  # Set line color to black
+    theme_minimal() +
+    theme(legend.position = 'right',
+          legend.key.height = unit(0.3, 'cm'),  # Reduce height of each legend key
+          legend.text = element_text(size = 8),  # Reduce legend text font size
+          axis.title = element_blank(),
+          axis.text.x = element_blank(),
+          axis.text.y = element_text(size=18, color='darkgray'),
+          plot.margin = unit(c(0.15,0.15, 0.75, 0.15), unit='cm'),
+          legend.title = element_blank()) +  # Remove legend title
+    guides(color = guide_legend(override.aes = list(size = 3))) +  # Adjust point size in legend
+     scale_y_continuous(
+        labels = function(x) sprintf("%.1f", x),
+        n.breaks=5)
+        }
+```
+
+
+###------------------------------------------------------------------####
+### FIGURE 3B2
+```{r}
+
+pdf(paste0(main_figure_path, 'Fig3_D_correlation.pdf'), width=4.8, height=18)
+ggarrange(plotlist = glist, nrow=9)
+dev.off()
+
+```
+
+```{r}
+
+supplementary_fig_save_path <- paste0(figures_filepath, 'Sup_Fig_S6/')
+
+if(dir.exists(supplementary_fig_save_path)==F){
+  dir.create(supplementary_fig_save_path)
+  }
+```
+
+
+### Granularity_3
+```{r}
+pca_list_com <- do.call(rbind, pca_list)
+glist <- list()
+for (c in 1:9) {
+  cgroups <- levels(factor(pca_list_com$con_grp))
+  df <- pca_list_com[pca_list_com$con_grp == cgroups[c],]
+  lin <- aggregate(Granularity_3 ~ Sample, data = df, FUN = mean)
+  
+  # Reorder Sample levels based on the order of PC2 for plotting purposes
+  df$Sample <- reorder(df$Sample, df$PC2)
+  
+  glist[[c]] <- ggplot(df, aes(Sample, Granularity_3, color=Sample)) +
+    geom_jitter(size = 0.5) +  # Adjust point size here
+    scale_color_manual(values = cols_to_map, 
+                       breaks = levels(df$Sample)) +  # Ensure legend follows the order in the plot
+    geom_line(data = lin, aes(x = Sample, y = Granularity_3, group = 1), size = 0.85, color = "black") +  # Set line color to black
+    theme_minimal() +
+    theme(legend.position = 'right',
+          legend.key.height = unit(0.3, 'cm'),  # Reduce height of each legend key
+          legend.text = element_text(size = 8),  # Reduce legend text font size
+          axis.title = element_blank(),
+          axis.text.x = element_blank(),
+          axis.text.y = element_text(size=18, color='darkgray'),
+          plot.margin = unit(c(0.15,0.15, 0.75, 0.15), unit='cm'),
+          legend.title = element_blank()) +  # Remove legend title
+    guides(color = guide_legend(override.aes = list(size = 3))) +  # Adjust point size in legend
+   scale_y_continuous(
+        labels = function(x) sprintf("%.1f", x),
+        n.breaks=5)
+        }
+
+```
+
+###------------------------------------------------------------------####
+### FIGURE 3B2
+```{r}
+
+pdf(paste0(supplementary_fig_save_path, 'S6_A_Granularity_3.pdf'), width=4.8, height=18)
+ggarrange(plotlist = glist, nrow=9)
+dev.off()
+
+```
+
+### Granularity_3
+#pca_list_com <- do.call(rbind, pca_list)
+```{r}
+
+glist <- list()
+for (c in 1:9) {
+  cgroups <- levels(factor(pca_list_com$con_grp))
+  df <- pca_list_com[pca_list_com$con_grp == cgroups[c],]
+  lin <- aggregate(Granularity_8 ~ Sample, data = df, FUN = mean)
+  
+  # Reorder Sample levels based on the order of PC2 for plotting purposes
+  df$Sample <- reorder(df$Sample, df$PC2)
+  
+  glist[[c]] <- ggplot(df, aes(Sample, Granularity_8, color=Sample)) +
+    geom_jitter(size = 0.5) +  # Adjust point size here
+    scale_color_manual(values = cols_to_map, 
+                       breaks = levels(df$Sample)) +  # Ensure legend follows the order in the plot
+    geom_line(data = lin, aes(x = Sample, y = Granularity_8, group = 1), size = 0.85, color = "black") +  # Set line color to black
+    theme_minimal() +
+    theme(legend.position = 'right',
+          legend.key.height = unit(0.3, 'cm'),  # Reduce height of each legend key
+          legend.text = element_text(size = 8),  # Reduce legend text font size
+          axis.title = element_blank(),
+          axis.text.x = element_blank(),
+          axis.text.y = element_text(size=18, color='darkgray'),
+          plot.margin = unit(c(0.15,0.15, 0.75, 0.15), unit='cm'),
+          legend.title = element_blank()) +  # Remove legend title
+    guides(color = guide_legend(override.aes = list(size = 3))) +  # Adjust point size in legend
+   scale_y_continuous(
+        labels = function(x) sprintf("%.1f", x),
+        n.breaks=5)
+        }
+
+```
+
+###------------------------------------------------------------------####
+### Supplementary fig 6B
+```{r}
+pdf(paste0(supplementary_fig_save_path, 'S6_B_Granularity_8.pdf'), width=4.8, height=18)
+ggarrange(plotlist = glist, nrow=9)
+dev.off()
+```
+```{r}
+
+remove(list=ls())
+
+
+```
+
+
+#### create new directory for supplementary figure 6 folder
+#dir.create(paste0(figures_filepath, 'Sup_Fig_S6/'))
+
+#### Subset confluency group 9 and plot all the metric over time to see how they change over time
+
+#for (p in 1:length(pca_list)){
+  
+  pc <- pca_list[[p]]
+  pc$TimePt <- factor(pc$TimePt, levels = timePt_levels)
+  
+  grn_levels <- colnames(pc)[grep('Granularity', colnames(pc))]
+  txt_levels <- colnames(pc)[grep('_0', colnames(pc))]
+  
+  meta <- pc[1:5]
+  
+  grn_df <- pc[grn_levels]
+  grn_df <- cbind(meta, grn_df)
+  grn_df_melt <- reshape2::melt(grn_df, id.vars = colnames(meta))
+  
+  txt_df <- pc[txt_levels]
+  txt_df <- cbind(meta, txt_df)
+  txt_df_melt <- reshape2::melt(txt_df, id.vars = colnames(meta))
+  
+  gplots <- list()
+  for (sample in 1:length(unique(pc$Sample))) {
+    df <- txt_df_melt[txt_df_melt$Sample == unique(pc$Sample)[sample],]
+    
+    #if (nrow(df_filtered) > 0) {
+      gplots[[sample]] <- ggline(df, 
+                                 x = 'TimePt', 
+                                 y = 'value', 
+                                 add = 'mean_se', 
+                                 group = 'variable', 
+                                 color = 'variable',
+                                 title = unique(pc$Sample)[sample],
+                                 plot_type = 'l',
+                                 size=0.75
+                                 ) +
+        theme_minimal() +
+        theme(legend.position = 'none',
+              legend.text = element_text(size=9),
+              legend.title = element_blank(),
+              axis.title.x = element_blank(),
+              axis.text.x = element_blank()
+              #axis.text.x = element_text(size=6, angle=60, hjust=1)
+              ) 
+  }
+
+  gplots <- Filter(function(x) inherits(x, "ggplot"), gplots)
+  
+  filename <- paste0('Sup_Fig_S6/PC_group_txt_',p,'.pdf')  
+  pdf(file.path(figures_filepath, filename), width = 6, height=2.6*(length(gplots)) )  
+  combined_plots <- wrap_plots(gplots, ncol=1) + 
+    plot_layout(guide = "collect") + 
+    theme(legend.position = 'right',
+          legend.text = element_text(size=9),
+          legend.key.size = unit(1.2, 'cm'))
+  print(combined_plots)
+  #ggarrange(plotlist = gplots, ncol=1)
+  dev.off()
+  
+  
+  gplots <- list()
+  for (sample in 1:length(unique(pc$Sample))) {
+    df <- grn_df_melt[grn_df_melt$Sample == unique(pc$Sample)[sample],]
+    
+    #if (nrow(df_filtered) > 0) {
+    gplots[[sample]] <- ggline(df, 
+                               x = 'TimePt', 
+                               y = 'value', 
+                               add = 'mean_se', 
+                               group = 'variable', 
+                               color = 'variable',
+                               title = unique(pc$Sample)[sample],
+                               plot_type = 'l',
+                               size=0.75
+    ) +
+      theme_minimal() +
+      theme(legend.position = 'none',
+            legend.text = element_text(size=9),
+            legend.title = element_blank(),
+            axis.title.x = element_blank(),
+            axis.text.x = element_blank()
+            #axis.text.x = element_text(size=6, angle=60, hjust=1)
+      ) 
+    
+  }
+  
+  gplots <- Filter(function(x) inherits(x, "ggplot"), gplots)
+  
+  filename <- paste0('Sup_Fig_S6/PC_group_grn_',p,'.pdf')  
+  pdf(file.path(figures_filepath, filename), width = 4.5, height=2.6*(length(gplots)) )  
+  combined_plots <- wrap_plots(gplots, ncol=1) + 
+    plot_layout(guide = "collect") + 
+    theme(legend.position = 'right',
+          legend.text = element_text(size=9),
+          legend.key.size = unit(1.2, 'cm'))
+  print(combined_plots)
+  #ggarrange(plotlist = gplots, ncol=1)
+  dev.off()
+  
+  
+
+}
+
+  
+### in each group compute the variance in mean variable expression values by time-point and separate by sample
+for (p in 1:length(pca_list)) {
+  
+  pc <- pca_list[[p]]
+  pc$TimePt <- factor(pc$TimePt, levels = timePt_levels)
+  
+  grn_levels <- colnames(pc)[grep('Granularity', colnames(pc))]
+  txt_levels <- colnames(pc)[grep('_0', colnames(pc))]
+  
+  meta <- pc[1:5]
+  
+  grn_df <- pc[grn_levels]
+  grn_df <- cbind(meta, grn_df)
+  grn_df_melt <- reshape2::melt(grn_df, id.vars = colnames(meta))
+  
+  txt_df <- pc[txt_levels]
+  txt_df <- cbind(meta, txt_df)
+  txt_df_melt <- reshape2::melt(txt_df, id.vars = colnames(meta))
+  
+  gplots <- list()
+  
+  for (variable in 1:length(unique(txt_df_melt$variable))) {
+    df <- txt_df_melt[txt_df_melt$variable == unique(txt_df_melt$variable)[variable],]
+    
+    df <- df %>% group_by(Sample, TimePt) %>% summarise(sd_value = sd(value, na.rm=TRUE))
+  
+    gplots[[variable]] <- ggplot(df, aes(x=Sample, y=sd_value, color=Sample)) + 
+      geom_boxplot(size=0.3, outliers = FALSE) + 
+      geom_jitter(size=0.3) +
+      scale_color_manual(values = cols_to_map) + 
+      theme_minimal() +
+      theme(legend.position = 'right', 
+            axis.title.x = element_blank(),
+            axis.text.x = element_text(size=9, angle=45, hjust=1)) +
+      labs(title = unique(txt_df_melt$variable)[variable],)
+    
+    #} else {
+    #warning(paste("Skipping sample", sample, "due to insufficient data after filtering."))
+    #}
+  }
+  
+  gplots <- Filter(function(x) inherits(x, "ggplot"), gplots)
+  
+  filename <- paste0('Sup_Fig_S6/PC_group_sd_txt_',p,'.pdf')  
+  pdf(file.path(figures_filepath, filename), width = 4.5, height=3.9*(length(gplots)) )  
+  combined_plots <- wrap_plots(gplots, ncol=1)
+  print(combined_plots)
+  #ggarrange(plotlist = gplots, ncol=1, width=3.8, height = 18)
+  dev.off()
+  
+  
+  gplots <- list()
+  
+  for (variable in 1:length(unique(grn_df_melt$variable))) {
+    df <- grn_df_melt[grn_df_melt$variable == unique(grn_df_melt$variable)[variable],]
+    
+    df <- df %>% group_by(Sample, TimePt) %>% summarise(sd_value = sd(value, na.rm=TRUE))
+    
+    gplots[[variable]] <- ggplot(df, aes(x=Sample, y=sd_value, color=Sample)) + 
+      geom_boxplot(size=0.3, outliers = FALSE) + 
+      geom_jitter(size=0.3) +
+      scale_color_manual(values = cols_to_map) + 
+      theme_minimal() +
+      theme(legend.position = 'right', 
+            axis.title.x = element_blank(),
+            axis.text.x = element_text(size=9, angle=45, hjust=1)) +
+      labs(title = unique(grn_df_melt$variable)[variable],)
+    
+    #} else {
+    #warning(paste("Skipping sample", sample, "due to insufficient data after filtering."))
+    #}
+  }
+  
+  gplots <- Filter(function(x) inherits(x, "ggplot"), gplots)
+  
+  filename <- paste0('Sup_Fig_S6/PC_group_sd_grn_',p,'.pdf')  
+  pdf(file.path(figures_filepath, filename), width = 4.5, height=3.9*(length(gplots)) )  
+  combined_plots <- wrap_plots(gplots, ncol=1)
+  print(combined_plots)
+  #ggarrange(plotlist = gplots, ncol=1, width=3.8, height = 18)
+  dev.off()
+  
+}
+
+  
+
+
+high_pc2 <-  subset(pca_list_com, Sample %in% c('G876', 'G895', 'G799'))[c(1:6,8,36:64)]
+high_pc2_melt <- reshape2::melt(high_pc2, id.vars=colnames(high_pc2)[1:7])
+high_pc2_melt$pc2_dir <- rep('cor', nrow(high_pc2_melt))
+
+low_pc2 <-  subset(pca_list_com, Sample %in% c('G861', 'G564', 'G729'))[c(1:6,8,36:64)]
+low_pc2_melt <- reshape2::melt(low_pc2, id.vars=colnames(low_pc2)[1:7])
+low_pc2_melt$pc2_dir <- rep('anti_cor', nrow(low_pc2_melt))
+
+
+pc2_topbot_3 <- rbind(high_pc2_melt, low_pc2_melt)
+pc2_topbot_3_grn <- subset(pc2_topbot_3, variable %in% shorter[6:21])
+pc2_topbot_3_txt <- subset(pc2_topbot_3, variable %in% shorter[22:34])
+
+pc2_topbot_3_grn$con_grp <- factor(pc2_topbot_3_grn$con_grp, levels=paste0('C', 1:9))
+
+pc2_topbot_3_txt$con_grp <- factor(pc2_topbot_3_txt$con_grp, levels=paste0('C', 1:9))
+pc2_topbot_3_txt_disorder <- subset(pc2_topbot_3_txt, variable %in% entropy[1:3])
+pc2_topbot_3_txt_hom <- subset(pc2_topbot_3_txt, variable %in% c('Ang2ndMoment','InverseDifferenceMoment', 'DifferenceVariance_00'))
+pc2_topbot_3_grn_small <- subset(pc2_topbot_3_grn, variable %in% c('Granularity_1','Granularity_2', 'Granularity_3'))
+pc2_topbot_3_grn_mid <- subset(pc2_topbot_3_grn, variable %in% c('Granularity_7','Granularity_8', 'Granularity_9'))
+pc2_topbot_3_grn_high <- subset(pc2_topbot_3_grn, variable %in% c('Granularity_14','Granularity_15', 'Granularity_16'))
+
+
+w=15
+h=2.4
+
