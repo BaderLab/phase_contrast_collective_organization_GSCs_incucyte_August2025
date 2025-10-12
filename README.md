@@ -9,6 +9,8 @@ This project was led by researchers at the **Bader Lab** (University of Toronto)
 AUTHORSHIP :
 Ayyadhury S, Sachamitr P, Kushida MM, Park NI, Coutinho FJ, Whitley O, Prinos P, Arrowsmith CH, Dirks PB, Pugh TJ, Bader GD. Glioblastoma stem cells show transcriptionally correlated spatial organization. 
 bioRxiv [preprint]. 2024 Aug 28.
+
+* doi:10.1101/2024.08.27.609918
 ----------------------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------------------
