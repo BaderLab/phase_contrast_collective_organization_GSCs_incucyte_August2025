@@ -67,3 +67,4 @@ AUTHORSHIP :
 
 
 ## License
+    - MIT LICENSE
