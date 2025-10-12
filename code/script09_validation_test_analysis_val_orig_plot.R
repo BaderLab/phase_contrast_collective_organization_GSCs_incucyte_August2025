@@ -11,11 +11,16 @@ library(effectsize)
 library(ggthemes)
 library(scales)
 library(forcats)
+library(tidyverse)
+library(caret)
+library(glmnet)
+library(rsample)
+
 
 ### FILE/FOLDER PATHS
 ###------------------------------------------------------------------#### 
 path_to_repo <- '/Users/mystique27m/Documents/Professional/research/PostdoctoralResearch_2020/Projects/PatternRecognitionInGSCs_UsingCV/'
-script_path <- paste0(path_to_repo,'scripts_final/code/')
+script_path <- paste0(path_to_repo,'scripts_final/scripts_Aug2025_to_push/code/')
 out <- paste0(path_to_repo, 'out/')
 save_dir_path <- paste0(out, 'script09_output_files/')
 dir.create(save_dir_path)
@@ -482,14 +487,6 @@ ggplot(performance_df_model_ridge, aes(x=confluency_group, y=s0, color=model_typ
 ####
 
 
-# -- Load Packages
-# --- Load Required Libraries ---
-library(tidyverse)
-library(caret)
-library(glmnet)
-library(rsample)
-library(ggplot2)
-
 # --- Set Seed for Reproducibility ---
 set.seed(42)
 
@@ -544,8 +541,6 @@ train_model_with_alpha <- function(df, alpha_val) {
   )
   }
 
-library(tidyverse)
-library(tidyverse)
 
 # --- Step 0: Rename 'index' to 'PC1' ---
 #df_combined <- df_combined %>%
@@ -656,6 +651,8 @@ ggplot(prediction_combined, aes(x = index, y = predicted, color = model_type)) +
     "Linear Regression" = "#C77CFF"
   ))
 
+ggsave(filename='Fig_4B_predicted_all_confluency_combined_gradient_training_gradient_gsva.png', path = main_figure_path, width=9, height=9)
+
 
 pred_ridge <- subset(prediction_combined, subset=prediction_combined$model_type=='Ridge (α=0)')
 pred_lasso <- subset(prediction_combined, subset=prediction_combined$model_type=='Lasso (α=1)')
@@ -671,6 +668,38 @@ en_pval <- cor.test(pred_elastic_net$predicted, pred_elastic_net$index)$p.value
 print(paste0('Elastic net p_value ',round(en_pval, digits=5)))
 
 
+# --- Step 6: Plot ---
+g<-ggplot(pred_lasso, aes(x = index, y = predicted)) +
+  geom_point(size = 4.5, alpha = 0.9) +
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed",
+              aes(group = model_type, color = model_type)) +
+  labs(
+    #title = "Predicted vs Actual",
+    x = "Ground truth developmental-injury response gradient position",
+    y = "Predicted developmental-injury response gradient position"
+    #color = "Model",
+    
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.title = element_text(face = 'bold', size = 21),
+    axis.text.x = element_text(size = 15),
+    axis.text.y = element_text(size=15),
+    legend.title = element_blank(),
+    legend.text = element_text(size = 15),
+    legend.key.spacing.y = unit(0.45, "cm"),
+    title = element_text(face = 'bold', size = 30)
+  )+
+  scale_color_manual(
+    values = c("Lasso" = "#619CFF"),
+    labels = c("Lasso" = "Lasso (α = 1)")  # ← your custom legend label
+  )
+
+
+#ggsave(filename='Fig_4B_grant_lasso_predicted_all_confluency_combined_gradient_training_gradient_gsva.png', path = main_figure_path, width=12, height=12)
+pdf(file=paste0(main_figure_path, 'Fig_4B_grant_lasso_predicted_all_confluency_combined_gradient_training_gradient_gsva.pdf'), width=12, height=12)
+g
+dev.off()
 
 # --- Step 7: Save Plot ---
 #ggsave(
@@ -679,8 +708,6 @@ print(paste0('Elastic net p_value ',round(en_pval, digits=5)))
 #  width = 15,
 #  height = 9
 #)
-ggsave(filename='Fig_4B_predicted_all_confluency_combined_gradient_training_gradient_gsva.png', path = main_figure_path, width=9, height=9)
-
 
 
 # 1) PCA on the new-only GSVA matrix to get true PC1 for new samples

@@ -93,7 +93,7 @@ dir.create(tables_path)
 LOAD DATA
 ###------------------------------------------------------------------####
 ```{r}
-source(paste0(script_path,"code/source_scripts/sourceData_General_variables_and_functions.R"))
+source(paste0(script_path,"scripts_Aug2025_to_push/code/source_scripts/sourceData_General_variables_and_functions.R"))
 
 GSC.gsva <- read.csv(paste0(path_to_repo,'/datasets_final/manuscript_analysis_data/bulk_RNA/GSC.gsva.csv'), row.names=1)
 phase <- read.csv(paste0(out, 'script01_output_files/final_dataset_afterQC.csv'), row.names = 1)
@@ -304,7 +304,7 @@ for (i in 1:9){
   var <- sort(which((p$variance[1:length(pcs)-1]-p$variance[2:(length(pcs))]) > 0.1), decreasing=T)[1]
   minPC <- min(pc1, var)
   
-  sc[[i]] <- PCAtools::screeplot(p, colBar='darkblue', axisLabSize = 24, components = 1:(pc1+1), title = '')
+  sc[[i]] <- PCAtools::screeplot(p, colBar='darkblue', axisLabSize = 27, components = 1:(pc1+1), title = '')
   pca_df <- cbind(meta,p$rotated)
   colnames(pca_df) <- c('con_grp','Media','Sample','TimePt','Well','Area', paste0('PC', 1:ncol(p$rotated)))
   var_pc <- rbind(var_pc, (p$variance[1] + p$variance[2]))

@@ -91,7 +91,7 @@ custom_colors <- c(
 LOAD DATA
 ```{r}
 phase <- read.csv(paste0(out, 'script01_output_files/final_dataset_afterQC.csv'), row.names = 1)
-source(paste0(script_path,"code/source_scripts/sourceData_General_variables_and_functions.R")) ### load general variables and functions
+source(paste0(script_path,"scripts_Aug2025_to_push/code/source_scripts/sourceData_General_variables_and_functions.R")) ### load general variables and functions
 ```
 
 
@@ -337,7 +337,7 @@ for (i in 1:length(df_list_tp_subsetted)){
         theme_minimal() + 
         scale_fill_manual(values=colors_to_map) +
         theme(axis.text.x = element_text(angle = 90, hjust = 1, size=21),
-              axis.text.y = element_text(size=21),
+              axis.text.y = element_text(size=27),
               axis.title.x = element_blank(),
               axis.title.y = element_text(size=24), 
               legend.position='none') + 
