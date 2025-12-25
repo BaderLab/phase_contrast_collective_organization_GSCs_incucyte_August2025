@@ -175,119 +175,10 @@ min(var_pc)
 max(var_pc)
 
 
-#saveRDS(p_objects, paste0(out, 'pca_objects.Rds'))
-#saveRDS(col_means_list, paste0(out, 'colMeans.Rds'))
-
-#features=35
-#pt.size=3.5
-
-#for (i in 1:9){
-#  pca_df <- pca_list[[i]]
-#  g1[[i]] <- ggplot(pca_df, aes(PC2, PC1, color=Sample)) +
-#    geom_jitter(size=pt.size) +
-#    theme_minimal() +
-#    scale_color_manual(values=c(cols_vivid, col_bold)) +
-#    theme(legend.position = 'none', 
-#          axis.title = element_text(size=21),
-#          axis.line = element_line(color='black'),
-#          axis.text.x = element_blank(),
-#          axis.text.y = element_text(angle=45, size=18)) +
-#    #geom_text_repel(aes(label=Sample), size=2.5) +
-#    xlab("PC2") + ylab("PC1")
-  
-#  g2[[i]] <- ggplot(pca_df, aes(PC2, PC3, color=Sample)) +
-#    geom_jitter(size=pt.size) +
-#    theme_minimal() +
-#    scale_color_manual(values=c(cols_vivid, col_bold)) +
-#    theme(legend.position = 'none', 
-#          axis.line = element_line(color='black'),
-#          axis.text.x = element_blank(),
-#          axis.text.y = element_text(angle=45, size=18)) +
-#    #geom_text_repel(aes(label=Sample), size=3) +
-#    xlab("PC2") + ylab("PC3")
-  
-#}
-
-
-#if(dir.exists(paste0(figures_filepath,'Sup_Fig_S2_repeat'))==F){
-#  dir.create(paste0(figures_filepath,'Sup_Fig_S2_repeat'))}
-
-
-###------------------------------------------------------------------####
-### FIGURE S2B
-#pdf(file = paste0(figures_filepath,'Sup_Fig_S2_repeat/S2_B_var.pdf'), width=42, height=6)
-#ggarrange(plotlist=sc, nrow=1, ncol=9)
-#dev.off()
-#--------------------------------------------------------------------------------#
-#Fig end
-
 sample_names <- unique(unlist(lapply(pca_list, function(x) x$Sample)))
 colors_to_map <- c(cols_vivid, col_bold)
 names(colors_to_map) <- sample_names
 
-#g1 <- list()
-
-
-#for (p in 1:9){
-  
-#  pca_df <- pca_list[[p]] %>% as.data.frame()
-#  pca_df <- arrange(pca_df, PC1)
-#  g1[[p]] <- ggplot(pca_df, aes(PC1, reorder(Sample, PC1), fill=Sample)) +
-#    geom_violin() +
-#    geom_jitter(size=0.3) +
-#    theme_minimal() +
-#    scale_fill_manual(values=colors_to_map) +
-#    theme(legend.position = 'none', 
-#          axis.title = element_text(size=24),
-#          axis.line = element_line(color='black'),
-#          axis.text.x = element_blank(),
-#          axis.text.y = element_text(angle=45, size=21)) +
-#    #geom_text_repel(aes(label=Sample), size=2.5) +
-#    xlab("PC1") + ylab("Sample")
-#  
-#}
-
-
-
-###------------------------------------------------------------------####
-### FIGURE S2C1
-###------------------------------------------------------------------####
-#pdf(file = paste0(figures_filepath,'Sup_Fig_S2_repeat/S2_C1.pdf'), width=42, height=6)
-#ggarrange(plotlist=g1, nrow=1, ncol=9)
-#dev.off()
-#--------------------------------------------------------------------------------#
-#Fig end
-
-#g2 <- list()
-
-
-#for (p in 1:9){
-  
-#  pca_df <- pca_list[[p]] %>% as.data.frame()
-#  pca_df <- arrange(pca_df, PC2)
-#  g2[[p]] <- ggplot(pca_df, aes(PC2, reorder(Sample, PC2), fill=Sample)) +
-#    geom_violin() +
-#    geom_jitter(size=0.3) +
-#    theme_minimal() +
-#    scale_fill_manual(values=colors_to_map) +
-#    theme(legend.position = 'none', 
-#          axis.title = element_text(size=24),
-#          axis.line = element_line(color='black'),
-#          axis.text.x = element_blank(),
-#          axis.text.y = element_text(angle=45, size=21)) +
-#    #geom_text_repel(aes(label=Sample), size=2.5) +
-#    xlab("PC2") + ylab("Sample")
-#  
-#}
-
-###------------------------------------------------------------------####
-### FIGURE S2C2
-###------------------------------------------------------------------####
-##pdf(file = paste0(figures_filepath,'Sup_Fig_S2_repeat/S2_C2.pdf'), width=42, height=6)
-##ggarrange(plotlist=g2, nrow=1, ncol=9)
-#dev.off()
-### ------------------------------------------------------------------####
-### Figure end
 
 
 ### BEFORE CHANGING PC DIRECTIONS
@@ -307,13 +198,6 @@ pca_list_medPC_corGSVA <- list()
 pca_list_medPC_corGSVA_pvalue <- list()
 GSC.gsva <- GSC.gsva_new
 sig <- rownames(GSC.gsva)
-
-#colnames(GSC.gsva)[colnames(GSC.gsva)=='G411'] <- 'g411' #
-#colnames(GSC.gsva)[colnames(GSC.gsva)=='G683'] <- 'g683' #
-#colnames(GSC.gsva)[colnames(GSC.gsva)=='G637'] <- 'g637' #
-#colnames(GSC.gsva)[colnames(GSC.gsva)=='G620'] <- 'g620' #
-#colnames(GSC.gsva)[colnames(GSC.gsva)=='G626'] <- 'g626'
-#colnames(GSC.gsva)[colnames(GSC.gsva)=='G477'] <- 'g477'
 
 
 for (pc in 1:3){
@@ -503,26 +387,6 @@ pc2_loadings$C8 <- pc2_loadings$C8 * (-1)
 
 
 
-#dir.create(paste0(tables_path, 'S_Table1_repeat'))
-#write.csv(GSC.gsva, paste0(tables_path, "/S_Table1_repeat/Tbl_1_GSC_gsva.csv"))
-
-#dir.create(paste0(tables_path, 'S_Table2_repeat'))
-#new_table_path <- paste0(tables_path, 'S_Table2_repeat/correlation_gsvaScoresWholeImages_PC')
-
-#for (cor in 1:14){
-#  write.csv(pca_list_medPC_corGSVA[[cor]], paste0(new_table_path, cor, ".csv"))  
-#}
-
-#dir.create(paste0(tables_path, 'S_Table3_repeat'))
-
-### These are compiled into Table 1
-#write.csv(pc1_loadings, paste0(tables_path, "/S_Table3_repeat/Tbl_3_pc1_wholeImageLoadings.csv"))
-#write.csv(pc2_loadings, paste0(tables_path, "/S_Table3_repeat/Tbl_3_pc2_wholeImageLoadings.csv"))
-#write.csv(pc3_loadings, paste0(tables_path, "/S_Table3_repeat/Tbl_3_pc3_wholeImageLoadings.csv"))
-
-
-#--------------------------------------------------------------------------------#
-### Table end
 
 saveRDS(pca_list, paste0(save_dir_path, 'pca_output_of_wholeImages_by_congrps.rds'))
 #remove(list=c('pca_list_medPC_corGSVA','pca_list_medPC_corGSVA_pvalue', 'pca_loadings_list'))

@@ -33,12 +33,15 @@ library(forcats)
 
 ```
 
+
+
+
 FILE/FOLDER PATHS
 ```{r}
 
 home <- path.expand('~')
 path_to_repo <- paste0(home,'/Documents/professional/research/PostdoctoralResearch_2020/Projects/PatternRecognitionInGSCs_UsingCV/')
-script_path <- paste0(path_to_repo,'scripts_final/')
+script_path <- paste0(path_to_repo,'scripts_final/scripts_Aug2025_to_push/')
 out <- paste0(path_to_repo,'out/')
 save_dir_path <- paste0(out, 'script05_output_files/')
 dir.create(save_dir_path)
@@ -62,6 +65,15 @@ pca_list_com_grn <- pca_list_com[c(1:5, 36:51)]
 df_list_tp_subsetted <- readRDS(paste0(out, 'script02_output_files/df_list_tp_subsetted.rds'))
 
 ```
+```{r}
+
+colors_to_map <- cols_vivid
+#names(colors_to_map) <- sample_names
+names(colors_to_map) <- c("G523", "G549", "G564", "G566", "G583", "G729", "G797", "G799", "G800", "G837", "G851", "G876", "G861", "G885", "G895")
+
+
+```
+
 
 COMBINE TEXTURAL AND GRANULARITY FEATURES
 ```{r}
@@ -244,8 +256,10 @@ pca_list_com <- do.call(rbind, pca_list)
 glist <- list()
 
 sample_names <- unique(pca_list_com$Sample)
-cols_to_map <- cols_vivid
-names(cols_to_map) <- sample_names
+#cols_to_map <- cols_vivid
+#names(cols_to_map) <- sample_names
+
+
 
 for (c in 1:9) {
   cgroups <- levels(factor(pca_list_com$con_grp))
@@ -258,7 +272,7 @@ for (c in 1:9) {
   
   glist[[c]] <- ggplot(df, aes(Sample, InfoMeas1_00, color=Sample)) +
     geom_jitter(size = 0.5) +  # Adjust point size here
-    scale_color_manual(values = cols_to_map, 
+    scale_color_manual(values = colors_to_map, 
                        breaks = levels(df$Sample)) +  # Ensure legend follows the order in the plot
     geom_line(data = lin, aes(x = Sample, y = InfoMeas1_00, group = 1), size = 0.85, color = "black") +  # Set line color to black
     theme_minimal() +
@@ -303,7 +317,7 @@ for (c in 1:9) {
   
   glist[[c]] <- ggplot(df, aes(Sample, InfoMeas2_00, color=Sample)) +
     geom_jitter(size = 0.5) +  # Adjust point size here
-    scale_color_manual(values = cols_to_map, 
+    scale_color_manual(values = colors_to_map, 
                        breaks = levels(df$Sample)) +  # Ensure legend follows the order in the plot
     geom_line(data = lin, aes(x = Sample, y = InfoMeas2_00, group = 1), size = 0.85, color = "black") +  # Set line color to black
     theme_minimal() +
@@ -394,7 +408,7 @@ for (c in 1:9) {
   
   glist[[c]] <- ggplot(df, aes(Sample, Correlation_00, color=Sample)) +
     geom_jitter(size = 0.5) +  # Adjust point size here
-    scale_color_manual(values = cols_to_map, 
+    scale_color_manual(values = colors_to_map, 
                        breaks = levels(df$Sample)) +  # Ensure legend follows the order in the plot
     geom_line(data = lin, aes(x = Sample, y = Correlation_00, group = 1), size = 0.85, color = "black") +  # Set line color to black
     theme_minimal() +
@@ -527,223 +541,4 @@ remove(list=ls())
 
 ```
 
-
-#### create new directory for supplementary figure 6 folder
-#dir.create(paste0(figures_filepath, 'Sup_Fig_S6/'))
-
-#### Subset confluency group 9 and plot all the metric over time to see how they change over time
-
-#for (p in 1:length(pca_list)){
-  
-  pc <- pca_list[[p]]
-  pc$TimePt <- factor(pc$TimePt, levels = timePt_levels)
-  
-  grn_levels <- colnames(pc)[grep('Granularity', colnames(pc))]
-  txt_levels <- colnames(pc)[grep('_0', colnames(pc))]
-  
-  meta <- pc[1:5]
-  
-  grn_df <- pc[grn_levels]
-  grn_df <- cbind(meta, grn_df)
-  grn_df_melt <- reshape2::melt(grn_df, id.vars = colnames(meta))
-  
-  txt_df <- pc[txt_levels]
-  txt_df <- cbind(meta, txt_df)
-  txt_df_melt <- reshape2::melt(txt_df, id.vars = colnames(meta))
-  
-  gplots <- list()
-  for (sample in 1:length(unique(pc$Sample))) {
-    df <- txt_df_melt[txt_df_melt$Sample == unique(pc$Sample)[sample],]
-    
-    #if (nrow(df_filtered) > 0) {
-      gplots[[sample]] <- ggline(df, 
-                                 x = 'TimePt', 
-                                 y = 'value', 
-                                 add = 'mean_se', 
-                                 group = 'variable', 
-                                 color = 'variable',
-                                 title = unique(pc$Sample)[sample],
-                                 plot_type = 'l',
-                                 size=0.75
-                                 ) +
-        theme_minimal() +
-        theme(legend.position = 'none',
-              legend.text = element_text(size=9),
-              legend.title = element_blank(),
-              axis.title.x = element_blank(),
-              axis.text.x = element_blank()
-              #axis.text.x = element_text(size=6, angle=60, hjust=1)
-              ) 
-  }
-
-  gplots <- Filter(function(x) inherits(x, "ggplot"), gplots)
-  
-  filename <- paste0('Sup_Fig_S6/PC_group_txt_',p,'.pdf')  
-  pdf(file.path(figures_filepath, filename), width = 6, height=2.6*(length(gplots)) )  
-  combined_plots <- wrap_plots(gplots, ncol=1) + 
-    plot_layout(guide = "collect") + 
-    theme(legend.position = 'right',
-          legend.text = element_text(size=9),
-          legend.key.size = unit(1.2, 'cm'))
-  print(combined_plots)
-  #ggarrange(plotlist = gplots, ncol=1)
-  dev.off()
-  
-  
-  gplots <- list()
-  for (sample in 1:length(unique(pc$Sample))) {
-    df <- grn_df_melt[grn_df_melt$Sample == unique(pc$Sample)[sample],]
-    
-    #if (nrow(df_filtered) > 0) {
-    gplots[[sample]] <- ggline(df, 
-                               x = 'TimePt', 
-                               y = 'value', 
-                               add = 'mean_se', 
-                               group = 'variable', 
-                               color = 'variable',
-                               title = unique(pc$Sample)[sample],
-                               plot_type = 'l',
-                               size=0.75
-    ) +
-      theme_minimal() +
-      theme(legend.position = 'none',
-            legend.text = element_text(size=9),
-            legend.title = element_blank(),
-            axis.title.x = element_blank(),
-            axis.text.x = element_blank()
-            #axis.text.x = element_text(size=6, angle=60, hjust=1)
-      ) 
-    
-  }
-  
-  gplots <- Filter(function(x) inherits(x, "ggplot"), gplots)
-  
-  filename <- paste0('Sup_Fig_S6/PC_group_grn_',p,'.pdf')  
-  pdf(file.path(figures_filepath, filename), width = 4.5, height=2.6*(length(gplots)) )  
-  combined_plots <- wrap_plots(gplots, ncol=1) + 
-    plot_layout(guide = "collect") + 
-    theme(legend.position = 'right',
-          legend.text = element_text(size=9),
-          legend.key.size = unit(1.2, 'cm'))
-  print(combined_plots)
-  #ggarrange(plotlist = gplots, ncol=1)
-  dev.off()
-  
-  
-
-}
-
-  
-### in each group compute the variance in mean variable expression values by time-point and separate by sample
-for (p in 1:length(pca_list)) {
-  
-  pc <- pca_list[[p]]
-  pc$TimePt <- factor(pc$TimePt, levels = timePt_levels)
-  
-  grn_levels <- colnames(pc)[grep('Granularity', colnames(pc))]
-  txt_levels <- colnames(pc)[grep('_0', colnames(pc))]
-  
-  meta <- pc[1:5]
-  
-  grn_df <- pc[grn_levels]
-  grn_df <- cbind(meta, grn_df)
-  grn_df_melt <- reshape2::melt(grn_df, id.vars = colnames(meta))
-  
-  txt_df <- pc[txt_levels]
-  txt_df <- cbind(meta, txt_df)
-  txt_df_melt <- reshape2::melt(txt_df, id.vars = colnames(meta))
-  
-  gplots <- list()
-  
-  for (variable in 1:length(unique(txt_df_melt$variable))) {
-    df <- txt_df_melt[txt_df_melt$variable == unique(txt_df_melt$variable)[variable],]
-    
-    df <- df %>% group_by(Sample, TimePt) %>% summarise(sd_value = sd(value, na.rm=TRUE))
-  
-    gplots[[variable]] <- ggplot(df, aes(x=Sample, y=sd_value, color=Sample)) + 
-      geom_boxplot(size=0.3, outliers = FALSE) + 
-      geom_jitter(size=0.3) +
-      scale_color_manual(values = cols_to_map) + 
-      theme_minimal() +
-      theme(legend.position = 'right', 
-            axis.title.x = element_blank(),
-            axis.text.x = element_text(size=9, angle=45, hjust=1)) +
-      labs(title = unique(txt_df_melt$variable)[variable],)
-    
-    #} else {
-    #warning(paste("Skipping sample", sample, "due to insufficient data after filtering."))
-    #}
-  }
-  
-  gplots <- Filter(function(x) inherits(x, "ggplot"), gplots)
-  
-  filename <- paste0('Sup_Fig_S6/PC_group_sd_txt_',p,'.pdf')  
-  pdf(file.path(figures_filepath, filename), width = 4.5, height=3.9*(length(gplots)) )  
-  combined_plots <- wrap_plots(gplots, ncol=1)
-  print(combined_plots)
-  #ggarrange(plotlist = gplots, ncol=1, width=3.8, height = 18)
-  dev.off()
-  
-  
-  gplots <- list()
-  
-  for (variable in 1:length(unique(grn_df_melt$variable))) {
-    df <- grn_df_melt[grn_df_melt$variable == unique(grn_df_melt$variable)[variable],]
-    
-    df <- df %>% group_by(Sample, TimePt) %>% summarise(sd_value = sd(value, na.rm=TRUE))
-    
-    gplots[[variable]] <- ggplot(df, aes(x=Sample, y=sd_value, color=Sample)) + 
-      geom_boxplot(size=0.3, outliers = FALSE) + 
-      geom_jitter(size=0.3) +
-      scale_color_manual(values = cols_to_map) + 
-      theme_minimal() +
-      theme(legend.position = 'right', 
-            axis.title.x = element_blank(),
-            axis.text.x = element_text(size=9, angle=45, hjust=1)) +
-      labs(title = unique(grn_df_melt$variable)[variable],)
-    
-    #} else {
-    #warning(paste("Skipping sample", sample, "due to insufficient data after filtering."))
-    #}
-  }
-  
-  gplots <- Filter(function(x) inherits(x, "ggplot"), gplots)
-  
-  filename <- paste0('Sup_Fig_S6/PC_group_sd_grn_',p,'.pdf')  
-  pdf(file.path(figures_filepath, filename), width = 4.5, height=3.9*(length(gplots)) )  
-  combined_plots <- wrap_plots(gplots, ncol=1)
-  print(combined_plots)
-  #ggarrange(plotlist = gplots, ncol=1, width=3.8, height = 18)
-  dev.off()
-  
-}
-
-  
-
-
-high_pc2 <-  subset(pca_list_com, Sample %in% c('G876', 'G895', 'G799'))[c(1:6,8,36:64)]
-high_pc2_melt <- reshape2::melt(high_pc2, id.vars=colnames(high_pc2)[1:7])
-high_pc2_melt$pc2_dir <- rep('cor', nrow(high_pc2_melt))
-
-low_pc2 <-  subset(pca_list_com, Sample %in% c('G861', 'G564', 'G729'))[c(1:6,8,36:64)]
-low_pc2_melt <- reshape2::melt(low_pc2, id.vars=colnames(low_pc2)[1:7])
-low_pc2_melt$pc2_dir <- rep('anti_cor', nrow(low_pc2_melt))
-
-
-pc2_topbot_3 <- rbind(high_pc2_melt, low_pc2_melt)
-pc2_topbot_3_grn <- subset(pc2_topbot_3, variable %in% shorter[6:21])
-pc2_topbot_3_txt <- subset(pc2_topbot_3, variable %in% shorter[22:34])
-
-pc2_topbot_3_grn$con_grp <- factor(pc2_topbot_3_grn$con_grp, levels=paste0('C', 1:9))
-
-pc2_topbot_3_txt$con_grp <- factor(pc2_topbot_3_txt$con_grp, levels=paste0('C', 1:9))
-pc2_topbot_3_txt_disorder <- subset(pc2_topbot_3_txt, variable %in% entropy[1:3])
-pc2_topbot_3_txt_hom <- subset(pc2_topbot_3_txt, variable %in% c('Ang2ndMoment','InverseDifferenceMoment', 'DifferenceVariance_00'))
-pc2_topbot_3_grn_small <- subset(pc2_topbot_3_grn, variable %in% c('Granularity_1','Granularity_2', 'Granularity_3'))
-pc2_topbot_3_grn_mid <- subset(pc2_topbot_3_grn, variable %in% c('Granularity_7','Granularity_8', 'Granularity_9'))
-pc2_topbot_3_grn_high <- subset(pc2_topbot_3_grn, variable %in% c('Granularity_14','Granularity_15', 'Granularity_16'))
-
-
-w=15
-h=2.4
 

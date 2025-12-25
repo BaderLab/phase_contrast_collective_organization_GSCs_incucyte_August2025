@@ -52,67 +52,6 @@ colors_to_map <- c(cols_vivid, col_bold)
 names(colors_to_map) <- sample_names
 
 
-#glist <- list()
-
-#for (i in 1:length(pca_list)){  
-#  glist[[i]] <- pca_list[[i]] %>% 
-#    ggplot(aes(x=reorder(Sample, InfoMeas1_00), y=InfoMeas1_00, fill=Sample)) + 
-#    geom_boxplot() + 
-#    geom_point(size=0.1) +
-#    theme_minimal() + 
-#    scale_fill_manual(values=colors_to_map) +
-#    theme(axis.text.x = element_text(angle = 90, hjust = 1, size=21),
-#          axis.text.y = element_text(size=21),
-#          axis.title.x = element_blank(),
-#          axis.title.y = element_text(size=24), 
-#          legend.position='none') + 
-#    labs(x='Sample', y='Informational Measure 1') #+
-#    #ylim(0,1)
-#}
-
-
-###------------------------------------------------------------------####
-### FIGURE S2A
-###------------------------------------------------------------------####
-#dir.create(paste0(figures_filepath, '/Sup_Fig_S2_repeat/'))
-
-#pdf(file = paste0(figures_filepath,'Sup_Fig_S2_repeat/S2_C1_infoMeas1_orig.pdf'), width=45, height=6)
-#ggarrange(plotlist=glist, ncol=9, nrow=1)
-#dev.off()
-
-
-#glist <- list()
-
-#for (i in 1:length(pca_list)){  
-#  glist[[i]] <- pca_list[[i]] %>% 
-#    ggplot(aes(x=reorder(Sample, PC2), y=InfoMeas1_00, fill=Sample)) + 
-#    geom_boxplot() + 
-#    geom_point(size=0.1) +
-#    theme_minimal() + 
-#    scale_fill_manual(values=colors_to_map) +
-#    theme(axis.text.x = element_text(angle = 90, hjust = 1, size=21),
-#          axis.text.y = element_text(size=21),
-#          axis.title.x = element_blank(),
-#          axis.title.y = element_text(size=24), 
-#          legend.position='none') + 
-#    labs(x='Sample', y='Informational Measure 1') #+
-#  #ylim(0,1)
-#}
-
-
-###------------------------------------------------------------------####
-### FIGURE S2A
-###------------------------------------------------------------------####
-#dir.create(paste0(figures_filepath, '/Sup_Fig_S2_repeat/'))
-
-#pdf(file = paste0(figures_filepath,'Sup_Fig_S2_repeat/S2_C1_infoMeas1_pc2_orig.pdf'), width=48, height=6)
-#ggarrange(plotlist=glist, ncol=9, nrow=1)
-#dev.off()
-
-
-################################################################################
-### Regression model by each confluency group
-################################################################################
 
 library(tidyverse)
 library(caret)
@@ -134,24 +73,6 @@ pve_df <- data.frame(
   PC = paste0("PC", 1:length(pve)),
   Variance = pve * 100  # in percentage
 )
-
-#g <- ggbiplot(gsva_pca,
-#         labels.size = 9,
-#         var.factor = 1,
-#         var.scale = 1,
-#         varname.size = 5.5,
-#         varname.adjust = 1,
-#         ellipse=T,
-#         ellipse.linewidth = 0.1,
-#         circle=T,
-#         )+
-#  theme_minimal(base_size = 9) +
-#  theme(legend.direction = 'horizontal', legend.position = 'top')
-
-
-#pdf(file = paste0(figures_filepath,'Sup_Fig_S2_repeat/S2_C1_gsva_pc1_2.pdf'), width=18, height=18)
-#g
-#dev.off()
 
 
 # Ensure correct numeric ordering of PCs
@@ -178,6 +99,12 @@ loadings_df_pc1 <- data.frame(
   Loading = as.numeric(loadings_pc1),
   row.names = NULL
 )
+
+tables_path <-  paste0(out,'/tables_final/')
+dir.create(paste0(tables_path, 'S_Table5'))
+
+write.csv(loadings_df_pc1, paste0(tables_path, "/S_Table5/Tbl_PC1_loadings.csv"))
+
 
 # 2. Select top10 and bottom10 by Loading
 top10_pc1    <- loadings_df_pc1 %>% top_n(10,    wt = Loading)
@@ -282,26 +209,6 @@ loadings_train_df <- data.frame(
   Loading = loadings_train_pc1
 )
 
-# Top and bottom drivers
-#top_gs_train <- loadings_train_df %>% top_n(10, Loading)
-#bottom_gs_train <- loadings_train_df %>% top_n(-10, Loading)
-#top_bottom_train <- rbind(top_gs_train, bottom_gs_train)
-
-# Plot
-#ggplot(top_bottom_train, aes(x = reorder(GeneSet, Loading), y = Loading, fill = Loading > 0)) +
-#  geom_col() +
-#  coord_flip() +
-#  theme_minimal(base_size = 12) +
-#  labs(
-#    title = "Top GSVA pathways driving PC1 (training gradient)",
-#    x = "Gene Set",
-#    y = "PC1 Loading"
-#  ) +
-#  scale_fill_manual(values = c("TRUE" = "steelblue", "FALSE" = "tomato")) +
-#  theme(legend.position = "none",
-#        axis.text.y = element_text(size=12))
-
-#ggsave(filename='Sup_Fig_S2_repeat/S2_training_pc2_gsva_top_loadings.png', path = figures_filepath, width=9, height=9)
 
 
 # Summarize image features
@@ -379,48 +286,6 @@ prediction_df$model_type <- factor(prediction_df$model_type,
 performance_df$model_type <- factor(performance_df$model_type,
                                     levels = c("alpha_0", "alpha_0.5", "alpha_1"),
                                     labels = c("Ridge (α=0)", "Elastic Net (α=0.5)", "Lasso (α=1)"))
-
-# --- Bar Plots ---
-#ggplot(performance_df, aes(x = confluency_group, y = correlation, fill = model_type)) +
-#  geom_bar(stat = "identity", position = position_dodge()) +
-#  labs(title = "Performance by Model and Confluency", y = "Correlation", fill = "Model") +
-#  theme_minimal(base_size = 13) +
-#  theme(axis.text.x = element_text(angle = 45, hjust = 1, size=18),
-#        axis.text.y = element_text(size=15),
-#        axis.title.x = element_blank(),
-#        title = element_text(size=21, face = 'bold'))
-#ggsave(filename='Sup_Fig_S2_repeat/S2_training_pc2_gsva_image_pc2_performance_barplot.png', path = figures_filepath, width=, height=6)
-
-
-
-# --- Predicted vs Actual ---
-#ggplot(prediction_df, aes(x = index, y = predicted, color = model_type)) +
-#  geom_point(alpha = 0.7, size = 2) +
-#  geom_smooth(method = "lm", se = FALSE, linetype = "dashed", color = "black", size = 0.4) +
-#  facet_wrap(~ model_type + con_grp, scales = "free_y", nrow=3, ) +
-#  labs(
-#    x = "Groundtruth Neurodev/Inj. Res gradient",
-#    y = "Predicted Neurodev/Inj. Res gradient",
-#    title = "Predicted vs Groundtruth by Model and Confluency",
-#    color = "Model",
-#    size = 21,
-#    face = 'bold'
-#  ) +
-#  theme_minimal(base_size = 15) +
-#  theme(strip.text = element_text(size = 12, face = "bold"),
-#        axis.text.x = element_text(angle = 45, hjust = 1, size=9),
-#        axis.text.y = element_text(size=9),
-##        axis.title.x = element_blank(),
-#        legend.text = element_text(size=15),
-#        legend.key.spacing.y = unit(0.45, "cm"),
-#        legend.position = "top",
-#        title = element_text(size = 18, face = 'bold')) +
-#  scale_color_manual(values = c("Ridge (α=0)" = "#F8766D",
-#                                "Elastic Net (α=0.5)" = "#00BA38",
-#                                "Lasso (α=1)" = "#619CFF"))
-
-#ggsave(filename='Sup_Fig_S2_repeat/S2_predicted_gradient_training_gradient_gsva.png', path = figures_filepath, width=18, height=9)
-
 
 ### plot R2 and RMSE values 
 
@@ -652,6 +517,9 @@ ggplot(prediction_combined, aes(x = index, y = predicted, color = model_type)) +
   ))
 
 ggsave(filename='Fig_4B_predicted_all_confluency_combined_gradient_training_gradient_gsva.png', path = main_figure_path, width=9, height=9)
+dir.create(paste0(tables_path, 'S_Table6'))
+write.csv(prediction_combined, paste0(tables_path, "/S_Table6/Tbl_6_training_output.csv"))
+
 
 
 pred_ridge <- subset(prediction_combined, subset=prediction_combined$model_type=='Ridge (α=0)')
@@ -700,6 +568,7 @@ g<-ggplot(pred_lasso, aes(x = index, y = predicted)) +
 pdf(file=paste0(main_figure_path, 'Fig_4B_grant_lasso_predicted_all_confluency_combined_gradient_training_gradient_gsva.pdf'), width=12, height=12)
 g
 dev.off()
+
 
 # --- Step 7: Save Plot ---
 #ggsave(
@@ -785,74 +654,9 @@ r2_df <- df_new %>%
   mutate(label = paste0("R² = ", round(R2, 3)))
 
 
+dir.create(paste0(tables_path, 'S_Table6'))
+write.csv(df_new, paste0(tables_path, "/S_Table6/Tbl_6b_training_output.csv"))
 
-
-
-# 2) Prepare training set (all features → original PC1)
-# 1) Find the samples in common
-#common_train <- intersect(rownames(combined_features_df),
-#                          names(gsva_axis_score_pc1))
-
-# 2) Build your X and y
-#x_train <- as.matrix(combined_features_df[common_train, ])
-
-# since gsva_axis_score_pc1 is a named vector, subset it by name:
-#y_train <- gsva_axis_score_pc1[common_train]
-
-# 3) (Optional) drop any all-NA columns in X
-#x_train <- x_train[, colSums(is.na(x_train)) == 0]
-
-# 3) Prepare new-feature matrix
-#x_new <- as.matrix(combined_features_df_new[, colnames(x_train)])
-#validation_results <- do.call(rbind, all_results)
-
-
-
-#library(dplyr)
-#library(ggplot2)
-
-# 1) Compute per‐Model R² and a common x/y position
-#r2_df <- validation_results %>%
-#  group_by(Model) %>%
-#  summarize(
-#    R2    = cor(Computed_PC1, Predicted_PC1, use = "complete.obs")^2,
-#    x_pos = min(Computed_PC1, na.rm = TRUE),
-#    y_pos = max(Predicted_PC1, na.rm = TRUE)
-#  ) %>%
-#  mutate(label = paste0("R² = ", round(R2, 3)))
-
-# 2) Plot and add those labels
-#ggplot(validation_results, aes(x = Computed_PC1, y = Predicted_PC1)) +
-#  geom_point(size=4.5) +
-#  geom_smooth(method = "lm", se = FALSE, color = "steelblue") +
-#  facet_wrap(~ Model) +
-#  geom_text(
-#    data = r2_df,
-#    aes(x = x_pos, y = .9, label = label),
-#    inherit.aes = T,
-#    hjust = 0,
-#    vjust = 1,
-#    size = 9
-#  ) +
-#  theme_minimal(base_size = 14) +
-#  theme(#legend.position = "none",
-#    axis.title.y = element_text(face='bold', size=21),
-#    #axis.title.x = element_blank(),
-#    axis.text.x = element_text(size=21),
-#    legend.text = element_text(size=18),
-#    legend.key.spacing.y = unit(0.45, "cm"),
-#    title = element_text(face = 'bold',
-#                         size = 21)) +
-#  labs(
-#    title = "Predicted vs Actual GSVA PC1 (New Samples)",
-#    x     = "GSVA PC1",
-#    y     = "Predicted GSVA PC1"
-#  )
-
-#ggsave(filename='Sup_Fig_S2_repeat/S2_predicted_new_samples_allfeatures_correlation_lineplot.png', path = figures_filepath, width=15, height=6)
-
-#validation_Results_lasso = validation_results[9:12,]
-#r2_df_lasso <- subset(r2_df, Model=='Lasso')
 
 
 ggplot(df_new, aes(x = Computed_PC1 , y = Predicted_PC1)) +
@@ -896,163 +700,6 @@ dir.create(supplementary_fig_path)
 ggsave(filename='S7_predicted_new_samples_allfeatures_correlation_lineplot_lasso.png', path = supplementary_fig_path, width=9, height=9)
 
 
-
-#ggplot(r2_df, aes(x=Model, y=R2)) + 
-#  geom_bar(stat='identity') + 
-#  ylim(0,.25) + 
-#  theme_minimal() +
-#  theme(axis.text = element_text(size=15),
-#        axis.title = element_text(size=21))
-
-#ggsave(filename='Sup_Fig_S2_repeat/S2_predicted_new_samples_allfeatures_correlation_model_performance.png', path = figures_filepath, width=6, height=6)
-
-
-# make lookup data.frame
-#pc1_new_df <- data.frame(
-#  Sample       = rownames(pca_new$x),
-#  Computed_PC1 = pc1_new_scores,
-#  stringsAsFactors = FALSE
-#)
-
-
-# 2) Prepare training set (all features → original PC1)
-# 1) Find the samples in common
-#common_train <- intersect(rownames(combined_features_df),
-#                          names(gsva_axis_score_pc1))
-
-# 2) Build your X and y
-#x_train <- as.matrix(combined_features_df[common_train, ])
-
-# since gsva_axis_score_pc1 is a named vector, subset it by name:
-#y_train <- gsva_axis_score_pc1[common_train]
-
-# 3) (Optional) drop any all-NA columns in X
-#x_train <- x_train[, colSums(is.na(x_train)) == 0]
-
-# 3) Prepare new-feature matrix
-#x_new <- as.matrix(combined_features_df_new[, colnames(x_train)])
-#validation_results <- do.call(rbind, all_results)
-
-
-
-#library(dplyr)
-#library(ggplot2)
-
-# 1) Compute per‐Model R² and a common x/y position
-#r2_df <- validation_results %>%
-#  group_by(Model) %>%
-#  summarize(
-#    R2    = cor(Computed_PC1, Predicted_PC1, use = "complete.obs")^2,
-#    x_pos = min(Computed_PC1, na.rm = TRUE),
-#    y_pos = max(Predicted_PC1, na.rm = TRUE)
-#  ) %>%
-#  mutate(label = paste0("R² = ", round(R2, 3)))
-
-# 2) Plot and add those labels
-#ggplot(validation_results, aes(x = Computed_PC1, y = Predicted_PC1)) +
-#  geom_point(size=4.5) +
-#  geom_smooth(method = "lm", se = FALSE, color = "steelblue") +
-#  facet_wrap(~ Model) +
-#  geom_text(
-#    data = r2_df,
-#    aes(x = x_pos, y = .9, label = label),
-#    inherit.aes = T,
-#    hjust = 0,
-#    vjust = 1,
-#    size = 9
-#  ) +
-#  theme_minimal(base_size = 14) +
-#  theme(#legend.position = "none",
-#    axis.title.y = element_text(face='bold', size=21),
-#    #axis.title.x = element_blank(),
-#    axis.text.x = element_text(size=21),
-#    legend.text = element_text(size=18),
-#    legend.key.spacing.y = unit(0.45, "cm"),
-#    title = element_text(face = 'bold',
-#                         size = 21)) +
-#  labs(
-#    title = "Predicted vs Actual GSVA PC1 (New Samples)",
-#    x     = "GSVA PC1",
-#    y     = "Predicted GSVA PC1"
-#  )
-
-#ggsave(filename='Sup_Fig_S2_repeat/S2_predicted_new_samples_allfeatures_correlation_lineplot.png', path = figures_filepath, width=15, height=6)
-
-#validation_Results_lasso = validation_results[9:12,]
-#r2_df_lasso <- subset(r2_df, Model=='Lasso')
-
-#ggplot(validation_Results_lasso, aes(x = Computed_PC1, y = Predicted_PC1)) +
-#  geom_point(size=4.5) +
-#  geom_smooth(method = "lm", se = FALSE, color = "steelblue") +
-#  #facet_wrap(~ Model) +
-##  geom_text(
-#    data = r2_df_lasso,
-#    aes(x = x_pos, y = 0.75, label = label),
-#    inherit.aes = T,
-#    hjust = 0,
-#    vjust = 1,
-#    size = 9
-#  ) +
-#  theme_minimal(base_size = 14) +
-#  theme(#legend.position = "none",
-#    axis.title = element_text(face='bold', size=21),
-#    #axis.title.x = element_blank(),
-#    axis.text = element_text(size=18),
-#    legend.text = element_text(size=18),
-#    legend.key.spacing.y = unit(0.45, "cm"),
-#    title = element_text(face = 'bold',
-#                         size = 15)) +
-#  labs(
-#    title = "Predicted vs Actual GSVA PC1 (New Samples)",
-#    x     = "GSVA PC1",
-#    y     = "Predicted GSVA PC1"
-#  )
-
-#ggsave(filename='Sup_Fig_S2_repeat/S2_predicted_new_samples_allfeatures_correlation_lineplot_lasso.png', path = figures_filepath, width=9, height=9)
-
-
-#ggplot(r2_df, aes(x=Model, y=R2)) + 
-#  geom_bar(stat='identity') + 
-#  ylim(0,.25) + 
-#  theme_minimal() +
-#  theme(axis.text = element_text(size=15),
-#        axis.title = element_text(size=21))
-
-#ggsave(filename='Sup_Fig_S2_repeat/S2_predicted_new_samples_allfeatures_correlation_model_performance.png', path = figures_filepath, width=6, height=6)
-
-
-
-
-
-#prediction_combined_ridge <- subset(prediction_combined, model_type=='Ridge (α=0)')
-
-# --- Predicted vs Actual Plot ---
-#ggplot(prediction_combined_ridge, aes(x = index, y = predicted, color = model_type)) +
-#  geom_point(size = 4.5, alpha = 0.9) +
-#  geom_smooth(method = "lm", se = FALSE, linetype = "dashed", color = "black") +
-#  labs(
-#    title = "Predicted vs Actual",
-#    x = "Groundtruth Neurodev/Inj. Res gradient",
-#    y = "Predicted Neurodev/Inj. Res gradient",
-#    color = "Model"
-#  ) +
-#  theme_minimal(base_size = 14) +
-#  theme(#legend.position = "none",
-#    axis.title.y = element_text(face='bold', size=21),
-#    #axis.title.x = element_blank(),
-#    axis.text.x = element_text(size=21),
-#    legend.text = element_text(size=18),
-#    legend.key.spacing.y = unit(0.45, "cm"),
-#    title = element_text(face = 'bold',
-#                         size = 30)) 
-
-#ggsave(filename='Sup_Fig_S2_repeat/S2_predicted_all_confluency_combined_gradient_training_gradient_gsva_ridge.png', path = figures_filepath, width=15, height=9)
-
-
-
-### IMPORT NEW GSVA OF NEW SAMPLES TO BE PREDICTED
-# Transpose GSVA matrix
-#gsva_new_t <- t(GSC_gsva_new)
 
 GSC.gsva_new <- read.csv(paste0(path_to_repo,'/incucyte_validation/out/GSC.gsva_including_validation_cohort.csv'), row.names=1)
 
@@ -1293,303 +940,16 @@ ggplot(trained_df, aes(x = Actual, y = Predicted)) +
 
 ggsave(filename='Sup_Fig_S2_repeat/S2_predicted_new_samples_top2loadings_correlation_lineplot_training.png', path = figures_filepath, width=7, height=7)
 
+dir.create(paste0(tables_path, 'S_Table6'))
+write.csv(trained_df, paste0(tables_path, "/S_Table6/Tbl_6c_pred_output.csv"))
+
+
 
 t <- cor.test(trained_df$Actual, trained_df$Predicted)
 t$p.value
 
-#### Train on new samples using 2 features
-# --- Predict on New Validation Samples ---
-#new_samples <- c("G620", "G637", "G683", "G411")
-#combined_features_df_new <- combined_features_df_new[new_samples,]
-
-#x_new <- as.matrix(combined_features_df_new[, features_to_use])
-#predicted_new_scores <- predict(model_2feat, newdata = combined_features_df_new[, features_to_use])
-
-# --- Create DataFrame with Predictions ---
-#validation_results <- data.frame(
-#  Sample = rownames(combined_features_df_new),
-#  Predicted_PC1 = as.numeric(predicted_new_scores)
-#)
-
-# --- Plot Prediction Results ---
-#ggplot(validation_results, aes(x = Sample, y = Predicted_PC1)) +
-#  geom_bar(stat = "identity", fill = "#619CFF") +
-#  theme_minimal(base_size = 14) +
-#  labs(title = "Predicted GSVA PC1 for New Samples (2 Feature Model)",
-#       x = "Sample", y = "Predicted GSVA PC1") +
-#  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-#ggsave(filename='Sup_Fig_S2_repeat/S2_predicted_new_sampled_top2loadings_training_gradient_gsva.png', path = figures_filepath, width=12, height=6)
-
-
-### IMPORT NEW GSVA OF NEW SAMPLES TO BE PREDICTED
-# Transpose GSVA matrix
-#gsva_new_t <- t(GSC_gsva_new)
-
-#GSC.gsva_new <- read.csv(paste0(path_to_repo,'/incucyte_validation/out/GSC.gsva_including_validation_cohort.csv'), row.names=1)
-
-# --- Transpose GSVA matrix and subset new samples ---
-#gsva_new_t <- t(GSC.gsva_new)
-#new_samples <- c("G620", "G637", "G683", "G411")
-#gsva_new_subset <- gsva_new_t[new_samples, ]
-
-# --- Create GSVA DataFrame (top 3 pathways per sample) ---
-#top_gsva_long <- as.data.frame(gsva_new_subset) %>%
-#  rownames_to_column("Sample") %>%
-#  pivot_longer(-Sample, names_to = "Pathway", values_to = "GSVA_Score") %>%
-#  group_by(Sample) %>%
-#  top_n(10, wt = GSVA_Score)
-
-# --- Add Predicted PC1 Scores ---
-#top_gsva_long <- top_gsva_long %>%
-#  left_join(validation_results, by = "Sample") %>%
-#  mutate(Source = "Top GSVA Pathway") %>%
-#  rename(Value = GSVA_Score)
-
-# --- Add Predicted PC1 as its own row per sample ---
-#pred_df <- validation_results %>%
-#  mutate(Pathway = "Predicted_PC1",
-#         Source = "Predicted PC1",
-#         Value = Predicted_PC1)
-
-# --- Combine both datasets ---
-#combined_plot_df <- bind_rows(top_gsva_long, pred_df)
-
-# --- Plot ---
-#ggplot(combined_plot_df, aes(x = reorder(Pathway, Value), y = Value, fill = Source)) +
-#  geom_bar(stat = "identity", position = "dodge") +
-#  coord_flip() +
-#  facet_wrap(~Sample, scales = "free") +
-#  theme_minimal(base_size = 13) +
-#  scale_fill_manual(values = c("Top GSVA Pathway" = "#F8766D", "Predicted PC1" = "#619CFF")) +
-#  labs(title = "Predicted PC1 vs Top GSVA Pathways (New Validation Samples)",
-#       y = "Score", x = "Feature", fill = "Source")
-
-
-#ggsave(filename='Sup_Fig_S2_repeat/S2_predicted_new_samples_top2loadings_gsva_gradient_top_loadings.png', path = figures_filepath, width=12, height=6)
 
 ###########################
-
-#gsva_axis_score_pc1 <- as.data.frame(gsva_axis_score_pc1)
-#gsva_axis_score_pc1$Samples <- rownames(gsva_axis_score_pc1)
-#gsva_axis_score_pc1
-
-#predicted_PC1 <- as.data.frame(predicted_new_scores)
-#predicted_PC1$Samples <- rownames(predicted_PC1)
-#colnames(predicted_PC1) <- c('gsva_axis_score_pc1', 'Samples')
-#predicted_PC1
-
-#combined_prediction_trained <- rbind(predicted_PC1, gsva_axis_score_pc1)
-
-#ggplot(combined_prediction_trained, aes(x=reorder(Samples, gsva_axis_score_pc1), 
-#                                        y=gsva_axis_score_pc1, 
-#                                        group=1)) + 
-#  geom_point(size=1) + 
-#  geom_line(data=gsva_axis_score_pc1, aes(x=Samples, y=gsva_axis_score_pc1)) +
-#  geom_point(data=predicted_PC1 , 
-#             aes(x=Samples, 
-#                 y=gsva_axis_score_pc1, 
-#                 color=Samples), 
-#             size=6, 
-#  ) +
-#  theme_minimal() +
-#  theme(axis.text.x = element_text(size=24, angle=45),
-#        axis.title.x = element_blank(),
-#        axis.text.y = element_text(size=21),
-#        axis.title.y = element_text(size = 30, face = 'bold'),
-#        line = element_line(linewidth = 0.25),
-#        legend.text = element_text(size = 21),
-#        legend.title = element_blank(),
-#        legend.key.spacing.y = unit(0.5, 'cm')) + 
-#  ylab('Neurodev/Inj. Res gradient')
-##ggsave(filename='Sup_Fig_S2_repeat/S2_predicted_new_samples_confluency_combined_top2loadings_gsva_gradient_lineplot.png', path = figures_filepath, width=12, height=9)
-
-
-### compute actual PC1 score and compare
-
-# Transpose GSVA and extract PC1 axis
-#gsc.gsva_combined_t <- t(GSC.gsva_new)
-#gsva_pca_combined <- prcomp(gsc.gsva_combined_t, center = TRUE, scale. = TRUE)
-
-# Compute proportion of variance explained
-#pve <- (gsva_pca$sdev)^2 / sum(gsva_pca$sdev^2)
-#pve_df <- data.frame(
-#  PC = paste0("PC", 1:length(pve)),
-#  Variance = pve * 100  # in percentage
-#)
-
-#gsva_axis_score_pc1_combined <- scale(gsva_pca_combined$x[, 1])[, 1]
-
-# Flip GSVA PC1 and loadings so that neurodevelopmental = high PC1
-#gsva_axis_score_pc1 <- -gsva_axis_score_pc1_combined
-#gsva_pca$rotation[, 1] <- -gsva_pca$rotation[, 1]
-
-
-# Flip GSVA PC1 and loadings so that neurodevelopmental = high PC1
-#gsva_axis_score_pc1_combined <- -gsva_axis_score_pc1_combined
-#gsva_pca_combined$rotation[, 1] <- -gsva_pca_combined$rotation[, 1]
-
-#df <- data.frame(
-#  Sample = names(gsva_axis_score_pc1_combined),
-#  Computed_PC1 = as.numeric(gsva_axis_score_pc1_combined)
-#)
-
-#df_validation <- subset(df, Sample %in% validation_results$Sample)
-#validation_results$Computed_PC1 <- df_validation$Computed_PC1
-
-
-
-#ggplot(validation_results, aes(x=Computed_PC1, y=Predicted_PC1)) + geom_point()
-
-
-#model <- lm(Predicted_PC1 ~ Computed_PC1, data = validation_results)
-#r2 <- summary(model)$r.squared
-
-#ggplot(validation_results, aes(x = Computed_PC1, y = Predicted_PC1)) +
-#  geom_point(size=9) +
-#  geom_smooth(method = "lm", se = FALSE, color = "red") +
-#  annotate("text", x = min(validation_results$Computed_PC1),
-#           y = 0.90,
-#           label = paste0("R² = ", round(r2, 3)), size = 12, hjust = 0) + 
-#  theme_minimal(base_size = 14) +
-#  theme(#legend.position = "none",
-#    axis.title = element_text(face='bold', size=21),
-#    #axis.title.x = element_blank(),
-#    axis.text = element_text(size=21),
-#    legend.text = element_text(size=18),
-#    legend.key.spacing.y = unit(0.45, "cm"),
-#    title = element_text(face = 'bold',
-#                         size = 21)) +
-#  labs(
-#    title = "Predicted vs Actual GSVA PC1 (New Samples) using top 2 image features",
-#    x     = "GSVA PC1",
-#    y     = "Predicted GSVA PC1"
-#  )
-
-
-#ggsave(filename='Sup_Fig_S2_repeat/S2_predicted_new_samples_top2loadings_correlation_lineplot.png', path = figures_filepath, width=12, height=9)
-
-
-#######
-### USING ALL FEATURES
-#library(glmnet)
-#library(ggplot2)
-
-
-
-## 4) Loop over models, predict, and merge in true PC1
-#alpha_vals    <- c(Ridge = 0, ElasticNet = 0.5, Lasso = 1)
-#all_results   <- list()
-
-#for (model_name in names(alpha_vals)) {
-#  cvm   <- cv.glmnet(x_train, y_train, alpha = alpha_vals[model_name])
-#  preds <- predict(cvm, newx = x_new, s = "lambda.min")
-  
-#  df <- data.frame(
-#    Sample        = rownames(x_new),
-#    Predicted_PC1 = as.numeric(preds),
-#    Model         = model_name,
-#    stringsAsFactors = FALSE
-#  )
-  
-  # merge in the true PC1 from the new-only PCA
-#  df <- merge(df, pc1_new_df, by = "Sample", all.x = TRUE)
-#  #df$Correlation <- with(df, cor(Predicted_PC1, Computed_PC1, use = "complete.obs"))
-#  test_result <- cor.test(df$Predicted_PC1, df$Computed_PC1, use = "complete.obs")
-#  df$Correlation <- test_result$estimate
-#  df$P_value     <- test_result$p.value
-  
-#  all_results[[model_name]] <- df
-#}
-
-
-
-
-
-
-
-
-
-
-
-
-# --- Plot ---
-# filter out any rows without a Computed_PC1
-#to_plot <- subset(validation_results, !is.na(Computed_PC1))
-
-#ggplot(to_plot, aes(x = Computed_PC1, y = Predicted_PC1)) +
-#  geom_point(alpha = 0.6) +
-#  geom_smooth(method = "lm", se = FALSE, color = "steelblue") +
-#  facet_wrap(~ Model) +
-#  theme_minimal() +
-#  labs(
-#    title = "Predicted vs Actual GSVA PC1 (New Samples)",
-#    x = "GSVA PC1 (Ground Truth)",
-#    y = "Predicted GSVA PC1"
-#  )
-
-#library(ggplot2)
-
-#ggplot(validation_results, aes(x = Computed_PC1, y = Predicted_PC1)) +
-#  geom_point(alpha = 0.6) +
-#  geom_smooth(method = "lm", se = FALSE, color = "steelblue") +
-#  facet_wrap(~ Model) +
-#  theme_minimal() +
-#  labs(title = "Predicted vs Actual GSVA PC1 (New Samples)",
-#       x = "GSVA PC1 (Ground Truth)",
-#       y = "Predicted GSVA PC1")
-
-
-# 1) Compute R² and label positions per model
-#r2_df <- validation_results %>%
-#  group_by(Model) %>%
-#  summarize(
-#    R2    = cor(Predicted_PC1, Computed_PC1, use = "complete.obs")^2,
-#    x_pos = min(Computed_PC1, na.rm = TRUE),
-#    y_pos = max(Predicted_PC1, na.rm = TRUE)
-#  )
-
-# 2) Plot with facets and per‐facet R²
-#ggplot(validation_results, aes(x = Computed_PC1, y = Predicted_PC1)) +
-#  geom_point(alpha = 0.6) +
-#  geom_smooth(method = "lm", se = FALSE, color = "red") +
-#  facet_wrap(~ Model) +
-#  geom_text(
-#    data = r2_df,
-#    aes(x = x_pos, y = 0.95, label = paste0("R² = ", round(R2, 3))),
-#    hjust = 0, vjust = 1, size = 5,
-#    inherit.aes = FALSE
-#  ) +
-#  theme_minimal(base_size = 14) +
-#  labs(
-#    title = "Predicted vs Actual GSVA PC1 (New Samples)",
-#    x     = "GSVA PC1 (Ground Truth)",
-#    y     = "Predicted GSVA PC1"
-#  )
-
-
-###
-
-
-#ggplot(top_gsva_long, 
-#       aes(x=reorder(Sample, Predicted_PC1), 
-#           y=Value, 
-#           color=Pathway)) + 
-#  geom_point() + 
-#  geom_label_repel(label=top_gsva_long$Pathway, size=9, label.size=1, face='bold') +
-#  theme_minimal() +
-#  theme(axis.text.x = element_text(size=27, face='bold'),
-#        axis.text.y = element_text(size=21, face='bold'),
-#        axis.title.x = element_blank(),
-#        axis.title.y = element_text(size=42, face='bold'),
-#        legend.position = 'none') + 
-#  ylab('Gene set enrichment score')
-
-#ggsave(filename='Sup_Fig_S2_repeat/S2_predicted_new_samples_confluency_combined_top2loadings_gsva_gradient_top_gene_signature_modules.png', path = figures_filepath, width=24, height=24)
-
-
-###########################
-
-
 
 
 remove(list=ls())

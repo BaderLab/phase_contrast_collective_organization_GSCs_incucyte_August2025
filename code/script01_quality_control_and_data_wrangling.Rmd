@@ -37,7 +37,8 @@ library(ggthemes)
 
 ```{r}
 ### directory paths
-path_to_repo <- '/Users/mystique27m/Documents/professional/research/PostdoctoralResearch_2020/Projects/PatternRecognitionInGSCs_UsingCV/'
+home <- path.expand('~')
+path_to_repo <- paste0(home,'/Documents/professional/research/PostdoctoralResearch_2020/Projects/PatternRecognitionInGSCs_UsingCV/')
 dataset_path <- paste0(path_to_repo, 'datasets_final/manuscript_analysis_data/cellprofiler_output/') 
 script_path <- paste0(path_to_repo,'/scripts_final/')
 
@@ -54,7 +55,7 @@ well_filepath <- paste0(path_to_repo,'datasets_fianl/wells_to_choose.csv')
 
 ```{r, include=FALSE}
 ###------------------------------------------------------------------#### 
-source(paste0(script_path,"code/source_scripts/sourceData_General_variables_and_functions.R"))
+source(paste0(script_path,"scripts_Aug2025_to_push/code/source_scripts/sourceData_General_variables_and_functions.R")) ### load general variables and functions
 
 ```
 

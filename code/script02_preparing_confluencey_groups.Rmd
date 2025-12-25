@@ -148,6 +148,12 @@ dir.create(paste0(figures_filepath, '/Sup_Fig_S2/'))
 
 ```
 
+```{r}
+
+txt_df %>% group_by(Sample) %>% count(.)
+
+```
+
 GENERATING PLOTS FOR SUPPLEMENTARY FIGURE 2A AND 2B
 ```{r}
 

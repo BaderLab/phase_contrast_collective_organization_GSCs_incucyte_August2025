@@ -40,7 +40,7 @@ library(forcats)
 ###------------------------------------------------------------------#### 
 home <- path.expand('~')
 path_to_repo <- paste0(home,'/Documents/professional/research/PostdoctoralResearch_2020/Projects/PatternRecognitionInGSCs_UsingCV/')
-script_path <- paste0(path_to_repo,'scripts_final/')
+script_path <- paste0(path_to_repo,'scripts_final/scripts_Aug2025_to_push/')
 out <- paste0(path_to_repo,'out/')
 save_dir_path <- paste0(out, 'script04_output_files')
 dir.create(save_dir_path)
@@ -270,6 +270,9 @@ for (c in 1:9){
   df_rem_combined <- rbind(df_rem_combined, df_remaining)
   
 }
+
+write.csv(df_rem_combined, paste0(tables_path, 'S_Table2/supplementary_table6'))
+
 
 ```
 
