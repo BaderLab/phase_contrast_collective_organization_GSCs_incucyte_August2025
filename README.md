@@ -6,8 +6,10 @@
 
 This project was led by researchers at the **Bader Lab** (University of Toronto) focused on spatial and single-cell systems biology.
 
-AUTHORSHIP :
-*** Shamini Ayyadhury ***, Patty Sachamitr, Michelle M. Kushida, Nicole I Park, Fiona J. Coutinho, Owen Whitley, Panagiotis Prinos, Cheryl H. Arrowsmith, Peter B. Dirks, Trevor J. Pugh, Gary D. Bader
+If you use this work, please cite:
+
+Ayyadhury S, Sachamitr P, Kushida MM, Park NI, Coutinho FJ, Whitley O, Prinos P, Arrowsmith CH, Dirks PB, Pugh TJ, Bader GD. Glioblastoma stem cells show transcriptionally correlated spatial organization. 
+[bioRxiv](https://www.biorxiv.org/content/10.1101/2024.08.27.609918v1). 2024 Aug 28. doi:10.1101/2024.08.27.609918
 
 ----------------------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------------------
