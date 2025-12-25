@@ -271,7 +271,8 @@ for (c in 1:9){
   
 }
 
-write.csv(df_rem_combined, paste0(tables_path, 'S_Table2/supplementary_table6'))
+dir.create(paste0(tables_path, 'Supplementary data'))
+write.csv(df_rem_combined, paste0(tables_path, 'Source data/Source data 1'))
 
 
 ```
